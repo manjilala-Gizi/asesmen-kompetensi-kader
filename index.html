@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>e-Asesmen Kompetensi Kader</title>
+<meta name="description" content="Aplikasi penilaian kompetensi kader posyandu oleh dua penilai, dengan nilai final otomatis dan cetak PDF. Poltekkes Kemenkes Makassar.">
+<meta name="theme-color" content="#0b6b66">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/favicon-64.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preload" href="vendor/fonts/poppins-Regular.woff" as="font" type="font/woff" crossorigin>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<a class="sr" href="#app">Lewati ke isi</a>
+<header class="topbar">
+  <a class="brand" href="#/" aria-label="e-Asesmen Kompetensi Kader, ke beranda">
+    <img src="assets/mark.png" alt="" width="32" height="34">
+    <span>e-Asesmen Kompetensi Kader<small>Poltekkes Kemenkes Makassar</small></span>
+  </a>
+  <span class="spacer"></span>
+  <button type="button" class="chip off" id="chip-sync" aria-live="polite"><i></i><span>Mode lokal</span></button>
+  <nav class="nav" id="nav" aria-label="Menu utama"></nav>
+</header>
+<main id="app" tabindex="-1"></main>
+<noscript><p style="padding:20px">Aplikasi ini membutuhkan JavaScript. Aktifkan JavaScript di peramban Anda.</p></noscript>
+<script src="vendor/pdf-lib.min.js"></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

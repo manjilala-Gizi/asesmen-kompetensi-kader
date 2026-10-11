@@ -1,0 +1,82 @@
+# Perubahan teks dibanding dokumen asli
+
+Koreksi ejaan/penomoran otomatis dan perubahan butir. Pembagi nilai dihitung otomatis = jumlah butir × jumlah penilai.
+
+- **KD1-P2**
+  - Asli: Menggunakan alat kontrasepsi langsung setelah melahirkan sampai 42 hari setelah melahirkan
+  - Menjadi: Menganjurkan penggunaan alat kontrasepsi segera setelah melahirkan sampai 42 hari setelah melahirkan
+- **KD1-P5**
+  - Asli: Menyampaikan informasi pemantauan kondisi kehamilan menggunakan lembar pemeriksaan ibu hamil catattan tenaga kesehatan
+  - Menjadi: Menyampaikan informasi pemantauan kondisi kehamilan menggunakan lembar pemeriksaan ibu hamil catatan tenaga kesehatan
+- **KD1-P5**
+  - Asli: Menyampaikan informasi segera melaksakan rujukan ke rumah sakit jika pemeriksaan tenaga kesehatan menghasilkan kondisi ibu hamil atau ibu nifas membutuhkan rujukan
+  - Menjadi: Menyampaikan informasi segera melaksanakan rujukan ke rumah sakit jika pemeriksaan tenaga kesehatan menghasilkan kondisi ibu hamil atau ibu nifas membutuhkan rujukan
+- **KD1-P6**
+  - Asli: Menjelaskan kpemantauan tanda bahaya pada ibu hamil dan ibu nifas menggunakan lembar pemantauan harian
+  - Menjadi: Menjelaskan pemantauan tanda bahaya pada ibu hamil dan ibu nifas menggunakan lembar pemantauan harian
+- **KD2-P1**
+  - Asli: Menyampaikan Informasi menggunakan lembar pemantauan panjang/ tinggi badan
+  - Menjadi: Menyampaikan Informasi menggunakan lembar pemantauan panjang/tinggi badan
+- **KD2-P4**
+  - Asli: Menjelaskan hasil pengukuran panjang/ tinggi anak berdasarkan grafik Panjang/ tinggi badan (normal)
+  - Menjadi: Menjelaskan hasil pengukuran panjang/tinggi anak berdasarkan grafik Panjang/ tinggi badan (normal)
+- **KD2-P4**
+  - Asli: Menjelaskan kesimpulan hasil pengukuran panjang/ tinggi tidak baik (stunting)
+  - Menjadi: Menjelaskan kesimpulan hasil pengukuran panjang/tinggi tidak baik (stunting)
+- **KD2-P7**
+  - Asli: Menjelaskan tanda bahaya bayi dan balita, risiko jika tidak melaksakan rujukan ke fasilitas kesehatan
+  - Menjadi: Menjelaskan tanda bahaya bayi dan balita, risiko jika tidak melaksanakan rujukan ke fasilitas kesehatan
+- **KD2-P7**
+  - Asli: Menjelaskan pemantauan tanda bahaya balita > 2bulan bulan oleh keluarga menggunakan buku kia
+  - Menjadi: Menjelaskan pemantauan tanda bahaya balita > 2 bulan oleh keluarga menggunakan buku kia
+- **KD2-P7**
+  - Asli: Lembar pemantauan harian bayi 0-2 bulan
+  - Menjadi: Menjelaskan lembar pemantauan harian bayi 0-2 bulan
+- **KD3-P1**
+  - Asli: Menjelaskan tindak lanjut jika beratbadan/ tinggi badan tidak normal
+  - Menjadi: Menjelaskan tindak lanjut jika berat badan/ tinggi badan tidak normal
+- **KD3-P2**
+  - Asli: Menganjurkan minum tablet tambah darah bagi remaja puteri
+  - Menjadi: Menganjurkan minum tablet tambah darah bagi remaja putri
+- **KD3-P2**
+  - Asli: Menganjurkan pemeriksaan hemoglobin pada remaja puteri kelas 7 dan 10
+  - Menjadi: Menganjurkan pemeriksaan hemoglobin pada remaja putri kelas 7 dan 10
+- **KD3-P3**
+  - Asli: Menjelaskan pengertian napza, jenis-jenis napza, bahaya Napza
+  - Menjadi: Menjelaskan pengertian NAPZA, jenis-jenis NAPZA, bahaya NAPZA
+- **KD3-P3**
+  - Asli: Menjelaskan cara menolak ajakan teman untuk merokok/ napza/ perilaku berisiko kehamilan
+  - Menjadi: Menjelaskan cara menolak ajakan teman untuk merokok/ NAPZA/ perilaku berisiko kehamilan
+- **KD4-P1**
+  - Asli: Menjelaskan perilaku risiko dari terjadinya Obesitas, Hipertensi, Stroke, Kanker, Diabetes PPOK, Diabetes, Kesehatan Jiwa dan TBC
+  - Menjadi: Menjelaskan perilaku risiko dari terjadinya Obesitas, Hipertensi, Stroke, Kanker, Diabetes, PPOK, Kesehatan Jiwa dan TBC
+- **KD4-P1**
+  - Asli: Menjelaskan masyarakat untuk mencegah terjadinya Obesitas, Hipertensi, Stroke, Kanker, Diabete, kesehatan jiwa dan TBC,
+  - Menjadi: Menjelaskan kepada masyarakat cara mencegah terjadinya Obesitas, Hipertensi, Stroke, Kanker, Diabetes, Kesehatan Jiwa dan TBC
+- **KD4-P1**
+  - Asli: Melakukan Deteksi Dini risiko Obesitas dengan pengukurarn lingkar perut
+  - Menjadi: Melakukan Deteksi Dini risiko Obesitas dengan pengukuran lingkar perut
+- **KD4-P1**
+  - Asli: Melakukan Deteksi Dini risiko Hipertensi, Strokedengan pengukurarn tekanan darah
+  - Menjadi: Melakukan Deteksi Dini risiko Hipertensi, Stroke dengan pengukuran tekanan darah
+- **KD4-P1**
+  - Asli: Melakukan Deteksi Dini risiko Kesehatan Jiwa dengan kartu bantu pemeriksaan usia dewasa danlansia
+  - Menjadi: Melakukan Deteksi Dini risiko Kesehatan Jiwa dengan kartu bantu pemeriksaan usia dewasa dan lansia
+- **KD4-P1**
+  - Asli: Menjelaskan Deteksi DIni DIabetes yang dilakukan tenaga kesehatan di posyandu
+  - Menjadi: Menjelaskan Deteksi Dini Diabetes yang dilakukan tenaga kesehatan di posyandu
+- **KD4-P2**
+  - Asli: Menjelaskan 3 komponen utama Germas (Isi Piringku, Aktifitas Fisik, Cek kesehatan)
+  - Menjadi: Menjelaskan 3 komponen utama Germas (Isi Piringku, Aktivitas Fisik, Cek kesehatan)
+- **KD4-P2**
+  - Asli: Menjelaskan standar aktifitas fisik
+  - Menjadi: Menjelaskan standar aktivitas fisik
+- **KD4-P5**
+  - Asli: Mampu menjelaskan instrument yang dipakai untuk skrining lanjut usia
+  - Menjadi: Mampu menjelaskan instrumen yang dipakai untuk skrining lanjut usia
+- **KD4-P5**
+  - Asli: Mampu melakukan pemeriksaan skrining Aktifitas Kehidupan Sehari-hari (AKS/ADL)
+  - Menjadi: Mampu melakukan pemeriksaan skrining Aktivitas Kehidupan Sehari-hari (AKS/ADL)
+- **KD5-P2**
+  - Asli: Menjelaskan pelaksanaan/alur Kunjungan Rumah dan cheklist kunjungan rumah
+  - Menjadi: Menjelaskan pelaksanaan/alur Kunjungan Rumah dan checklist kunjungan rumah
