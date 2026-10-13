@@ -36,7 +36,13 @@ Cek cepat: tempel URL itu di browser dengan tambahan `?action=ping&key=KUNCI-AND
 
 > Bila `Code.gs` diubah di kemudian hari: **Terapkan > Kelola deployment > ikon pensil > Versi: Versi baru > Terapkan**. Dengan cara ini URL `/exec` tetap sama, jadi HP penilai tidak perlu diatur ulang.
 
-## B. Atur HP pengelola, lalu bagikan ke penilai
+## B. Sambungkan aplikasi
+
+**Cara utama (sudah dipakai):** URL `/exec` dan kunci ditulis di [`js/config.js`](../js/config.js). Semua HP yang membuka https://manjilala-gizi.github.io/asesmen-kompetensi-kader/ otomatis tersambung, penilai tidak perlu membuka Setelan. Bila URL atau kunci berganti, ubah `js/config.js` lalu naikkan `VERSI` di `sw.js`.
+
+Catatan: karena repositori GitHub bersifat publik, kunci di `js/config.js` ikut terlihat publik. Data di Sheets tetap tidak bisa didaftar dari luar (untuk membaca satu sesi harus tahu kode sesinya), tetapi orang yang iseng bisa mengirim data palsu. Bila ini menjadi masalah, kosongkan `js/config.js` dan pakai cara alternatif di bawah.
+
+**Cara alternatif (kunci tidak ditaruh di GitHub):**
 
 1. Buka aplikasi di HP, menu **Setelan**.
 2. **Alamat Web App**: tempel URL `/exec`. **Kunci rahasia**: isi nilai `KUNCI` yang sama.

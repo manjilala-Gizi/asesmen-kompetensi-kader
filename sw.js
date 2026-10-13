@@ -1,11 +1,11 @@
 // Service worker: aplikasi bisa dibuka dan dipakai tanpa internet.
 // Naikkan VERSI setiap kali file aplikasi diubah agar perangkat mengambil versi baru.
-const VERSI = 'v1.1.1';
+const VERSI = 'v1.3.0';
 const CACHE = 'e-asesmen-kader-' + VERSI;
 const FILE = [
   './', 'index.html', 'manifest.webmanifest',
   'css/styles.css',
-  'js/app.js', 'js/views.js', 'js/util.js', 'js/db.js', 'js/scoring.js', 'js/sync.js', 'js/pdf.js', 'js/data/tilik.js',
+  'js/app.js', 'js/config.js', 'js/views.js', 'js/util.js', 'js/db.js', 'js/scoring.js', 'js/sync.js', 'js/pdf.js', 'js/data/tilik.js',
   'vendor/pdf-lib.min.js',
   'vendor/fonts/poppins-Regular.woff', 'vendor/fonts/poppins-Medium.woff', 'vendor/fonts/poppins-Bold.woff',
   'assets/logo-poltekkes.png', 'assets/mark.png',

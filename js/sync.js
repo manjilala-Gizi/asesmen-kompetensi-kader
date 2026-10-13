@@ -103,28 +103,46 @@ export async function kirimSemua() {
   return { dikirim, gagal };
 }
 
-// Ambil data penilai lain untuk satu sesi
-export async function ambilSesi(sessionId) {
+async function simpanDariServer(records) {
+  const lokal = await semuaRecord();
+  let baru = 0;
+  for (const r of records || []) {
+    const key = `${r.sessionId}-${r.role}`;
+    const ada = lokal.find((x) => x.key === key);
+    if (ada && !ada.remote) continue; // catatan milik perangkat ini tidak ditimpa
+    if (ada && ada.remote && ada.updatedAt >= r.updatedAt) continue;
+    await simpanRecord({ ...r, key, remote: true, synced: true });
+    baru++;
+  }
+  return baru;
+}
+
+async function ambil(action, id) {
   const cfg = await ambilPengaturan();
   if (!cfg.syncUrl || !cfg.syncKey) return { ok: false, alasan: 'Alamat Google Sheets belum diatur di Pengaturan.' };
   if (!navigator.onLine) return { ok: false, alasan: 'Tidak ada jaringan.' };
   try {
-    const json = await panggil(cfg, { method: 'GET' }, `action=session&id=${encodeURIComponent(sessionId)}&key=${encodeURIComponent(cfg.syncKey)}`);
+    const json = await panggil(cfg, { method: 'GET' }, `action=${action}&id=${encodeURIComponent(id)}&key=${encodeURIComponent(cfg.syncKey)}`);
     if (!json || !json.ok) return { ok: false, alasan: (json && json.error) || 'Server menolak permintaan.' };
-    const lokal = await semuaRecord();
-    let baru = 0;
-    for (const r of json.records || []) {
-      const key = `${r.sessionId}-${r.role}`;
-      const ada = lokal.find((x) => x.key === key);
-      if (ada && !ada.remote) continue; // catatan milik perangkat ini tidak ditimpa
-      if (ada && ada.remote && ada.updatedAt >= r.updatedAt) continue;
-      await simpanRecord({ ...r, key, remote: true, synced: true });
-      baru++;
-    }
+    const baru = await simpanDariServer(json.records);
     return { ok: true, baru, records: json.records || [] };
   } catch {
     return { ok: false, alasan: 'Tidak dapat terhubung ke server.' };
   }
+}
+
+// Ambil data penilai lain untuk satu sesi (satu point)
+export const ambilSesi = (sessionId) => ambil('session', sessionId);
+
+// Ambil data penilai lain untuk satu paket (banyak point, kode_sesi = KODE-point).
+// Bila Apps Script masih versi lama (belum kenal aksi paket), ambil per point.
+export async function ambilPaket(kode, pointIds = []) {
+  const r = await ambil('paket', kode);
+  if (r.ok || !/tidak dikenal/i.test(r.alasan || '') || !pointIds.length) return r;
+  const semua = await Promise.all(pointIds.map((pid) => ambil('session', `${kode}-${pid}`)));
+  const gagal = semua.find((x) => !x.ok);
+  if (gagal) return gagal;
+  return { ok: true, baru: semua.reduce((a, x) => a + x.baru, 0), records: semua.flatMap((x) => x.records) };
 }
 
 export async function ujiKoneksi(url, key) {

@@ -1,5 +1,7 @@
 // Penyimpanan lokal di perangkat (IndexedDB). Semua penilaian tersimpan di sini lebih dulu.
 
+import { BAWAAN } from './config.js';
+
 const NAMA = 'e-asesmen-kader';
 let dbp;
 
@@ -44,7 +46,13 @@ const DEFAULT = {
 
 export async function ambilPengaturan() {
   const r = await tx('meta', 'readonly', (s) => s.get('settings'));
-  return { ...DEFAULT, ...(r ? r.v : {}), penilai: { ...DEFAULT.penilai, ...((r && r.v && r.v.penilai) || {}) } };
+  const v = { ...DEFAULT, ...(r ? r.v : {}), penilai: { ...DEFAULT.penilai, ...((r && r.v && r.v.penilai) || {}) } };
+  // alamat dan kunci kosong di perangkat -> pakai setelan bawaan dari js/config.js
+  if (!v.syncUrl && !v.syncKey) {
+    v.syncUrl = BAWAAN.syncUrl || '';
+    v.syncKey = BAWAAN.syncKey || '';
+  }
+  return v;
 }
 
 export async function simpanPengaturan(v) {

@@ -75,14 +75,17 @@ function doGet(e) {
   var p = (e && e.parameter) || {};
   if (!benar_(p.key)) return out_({ ok: false, error: 'Kunci salah atau belum diatur di Script properties' });
   if (p.action === 'ping') return out_({ ok: true, nama: SpreadsheetApp.getActiveSpreadsheet().getName() });
-  if (p.action === 'session') {
+  // session: satu sesi (satu point). paket: semua point dalam satu paket (kode_sesi = KODE-point).
+  if (p.action === 'session' || p.action === 'paket') {
+    var id = String(p.id || ''), awalan = id + '-';
     var v = sheet_('Data_Penilaian', HEAD_DATA).getDataRange().getValues(), recs = [];
     for (var i = 1; i < v.length; i++) {
-      if (String(v[i][1]) !== String(p.id)) continue;
+      var kode = String(v[i][1]);
+      if (p.action === 'session' ? kode !== id : kode.indexOf(awalan) !== 0) continue;
       var ans = [];
       try { ans = JSON.parse(v[i][15] || '[]'); } catch (err) { ans = []; }
       recs.push({
-        key: String(v[i][0]), sessionId: String(v[i][1]), pointId: String(v[i][2]), pointJudul: String(v[i][3]),
+        key: String(v[i][0]), sessionId: kode, pointId: String(v[i][2]), pointJudul: String(v[i][3]),
         role: Number(v[i][4]), attempt: Number(v[i][5]), tanggal: String(v[i][6]),
         kader: { nama: String(v[i][7]), desa: String(v[i][8]), posyandu: String(v[i][9]) },
         penilai: { nama: String(v[i][10]), institusi: String(v[i][11]) },

@@ -20,6 +20,8 @@ Aplikasi web (PWA) untuk menilai kompetensi kader posyandu dengan daftar tilik K
 | Lulus | Nilai final minimal 80% |
 | Pembagi | Dihitung otomatis dari jumlah butir, tidak diketik manual |
 | Percobaan ulang | Setiap percobaan tersimpan di riwayat |
+| Banyak point sekaligus | Point dipilih dengan centang (pilih semua per KD). Identitas diisi sekali, Penilai 2 bergabung dengan satu tautan untuk semua point |
+| Status KD | KOMPETEN bila semua point dalam KD lulus. Semua point dalam satu KD dinilai pada hari yang sama |
 | KD II Point 3 | 72 butir dalam 6 bagian, ditambah kategori kepatuhan (Kurang, Cukup, Baik, Sangat Baik) dari rata-rata skor kedua penilai |
 
 Perubahan teks butir dibanding dokumen asli (ejaan, penomoran) ada di [`docs/CATATAN-PERUBAHAN-TEKS.md`](docs/CATATAN-PERUBAHAN-TEKS.md).
@@ -42,15 +44,15 @@ Ringkasnya (langkah lengkap di [`docs/PANDUAN-GOOGLE-SHEETS.md`](docs/PANDUAN-GO
 1. Buat Google Spreadsheet baru, **Ekstensi > Apps Script**, tempel isi [`apps-script/Code.gs`](apps-script/Code.gs).
 2. **Setelan Proyek > Properti skrip**: tambahkan `KUNCI` berisi kata sandi bebas.
 3. **Terapkan > Deployment baru > Aplikasi web** (Jalankan sebagai: Saya, Akses: Siapa saja), salin URL `/exec`.
-4. Di aplikasi: **Setelan**, isi URL dan kunci, Simpan, Uji koneksi.
-5. **Bagikan tautan setelan ke penilai lain**, penilai cukup membuka tautan dan menekan Simpan.
+4. Tulis URL `/exec` dan kunci itu di [`js/config.js`](js/config.js), lalu naikkan `VERSI` di `sw.js`. Semua HP yang membuka aplikasi langsung tersambung, penilai tidak perlu mengatur apa pun.
+5. (Opsional) Bila `js/config.js` dikosongkan, tiap HP diatur lewat **Setelan**, atau pakai **Bagikan tautan setelan ke penilai lain**.
 
 ## Alur pemakaian
 
-1. **Penilai 1:** Menilai > isi identitas kader (nama, asal desa, posyandu) dan identitas penilai (nama, asal institusi) > pilih point > isi checklist > Selesai.
-2. **Penilai 1** membagikan tautan sesi (WhatsApp atau salin). Tautan berisi data kader, jadi Penilai 2 bisa membukanya tanpa internet.
-3. **Penilai 2:** membuka tautan > lengkapi identitas sendiri > isi checklist > Selesai.
-4. Setelah kedua data terkirim, tekan **Ambil nilai penilai lain** untuk melihat nilai final, lalu **Cetak PDF**.
+1. **Penilai 1:** Menilai > isi identitas kader dan penilai > centang point yang dinilai hari ini (pilih KD: semua point-nya tercentang) > isi checklist point demi point (**Selesai, lanjut**).
+2. Di halaman **Ringkasan**, Penilai 1 membagikan satu tautan (WhatsApp atau salin). Tautan berisi data kader dan daftar point, jadi Penilai 2 bisa membukanya tanpa internet.
+3. **Penilai 2:** membuka tautan > lengkapi identitas sendiri > isi checklist semua point.
+4. Setelah kedua data terkirim, tekan **Ambil nilai penilai lain** untuk melihat nilai final dan status KD, lalu **Cetak PDF semua point**.
 
 ## Struktur berkas
 
@@ -63,6 +65,7 @@ js/app.js               pintu masuk, rute, status sinkron
 js/views.js             semua halaman
 js/scoring.js           aturan nilai dan penggabungan dua penilai
 js/db.js                penyimpanan di perangkat (IndexedDB)
+js/config.js            alamat Apps Script dan kunci bawaan
 js/sync.js              antrean kirim ke Google Sheets
 js/pdf.js               pembuat PDF
 js/data/tilik.js        isi 25 daftar tilik (209 butir)

@@ -19,7 +19,7 @@ const IKON = {
 const MENU = [
   ['#/', 'Beranda', 'beranda', ['']],
   ['#/baru', 'Menilai', 'nilai', ['baru', 'gabung', 'nilai']],
-  ['#/riwayat', 'Riwayat', 'riwayat', ['riwayat', 'hasil']],
+  ['#/riwayat', 'Riwayat', 'riwayat', ['riwayat', 'hasil', 'paket']],
   ['#/rekap', 'Rekap', 'rekap', ['rekap']],
   ['#/setelan', 'Setelan', 'setelan', ['setelan', 'tentang']],
 ];
@@ -51,6 +51,7 @@ async function tampilkan() {
       case 'gabung': hasil = await V.gabung(paramMentah); break;
       case 'nilai': hasil = await V.nilai(param); break;
       case 'hasil': hasil = await V.hasil(param); break;
+      case 'paket': hasil = await V.paket(param); break;
       case 'riwayat': hasil = await V.riwayat(); break;
       case 'rekap': hasil = await V.rekap(paramMentah); break;
       case 'setelan': hasil = await V.setelan(query); break;

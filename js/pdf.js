@@ -378,7 +378,7 @@ function finalisasi(pen, doc, kiri) {
 }
 
 // ---------- Rekap per kader
-export async function buatPdfRekap({ kader, baris }) {
+export async function buatPdfRekap({ kader, baris, stKd = new Map() }) {
   // baris: [{ point, sesi:{ref, hasil} | null }]
   const L = window.PDFLib;
   const doc = await L.PDFDocument.create();
@@ -399,6 +399,7 @@ export async function buatPdfRekap({ kader, baris }) {
     ['Asal desa', kader.desa],
     ['Posyandu', kader.posyandu],
     ['Tanggal cetak', tanggalIndo(new Date().toISOString())],
+    ['KD kompeten', `${[...stKd.values()].filter((x) => x.label === 'KOMPETEN').length} dari ${new Set(baris.map((b) => b.point.kd)).size}`],
     ['Point lulus', `${lulus} dari ${baris.length}`],
     ['Sudah dinilai lengkap', `${dinilai.length} dari ${baris.length}`],
   ]);
@@ -424,6 +425,12 @@ export async function buatPdfRekap({ kader, baris }) {
       if (pen.perlu(16 + 24)) kepala();
       pen.kotak(M, pen.y - 16, LEBAR, 16, { isi: c.muda });
       pen.text(`${b.point.kdKode} - ${b.point.kdJudul}`, M + 6, pen.y - 11.5, 8.5, f.bold, c.ink);
+      const st = stKd.get(b.point.kd);
+      if (st) {
+        const teks = st.label + (st.final === st.total ? ` (${st.lulus}/${st.total} point lulus)` : '');
+        const warna = st.status === 'lulus' ? c.teal : st.status === 'tidak' ? c.merah : c.abu;
+        pen.text(teks, M + LEBAR - 6 - f.bold.widthOfTextAtSize(teks, 8.5), pen.y - 11.5, 8.5, f.bold, warna);
+      }
       pen.y -= 16;
     }
     const lines = pen.bungkus(b.point.judul, W[1] - 10, 8.5);
