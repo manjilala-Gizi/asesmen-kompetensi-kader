@@ -50,9 +50,10 @@ Ringkasnya (langkah lengkap di [`docs/PANDUAN-GOOGLE-SHEETS.md`](docs/PANDUAN-GO
 ## Alur pemakaian
 
 1. **Penilai 1:** Menilai > isi identitas kader dan penilai > centang point yang dinilai hari ini (pilih KD: semua point-nya tercentang) > isi checklist point demi point (**Selesai, lanjut**).
-2. Di halaman **Ringkasan**, Penilai 1 membagikan satu tautan (WhatsApp atau salin). Tautan berisi data kader dan daftar point, jadi Penilai 2 bisa membukanya tanpa internet.
-3. **Penilai 2:** membuka tautan > lengkapi identitas sendiri > isi checklist semua point.
-4. Setelah kedua data terkirim, tekan **Ambil nilai penilai lain** untuk melihat nilai final dan status KD, lalu **Cetak PDF semua point**.
+2. Langsung muncul layar **Undang Penilai 2**: QR code, tautan (Salin), dan WhatsApp. Semuanya berisi data kader dan daftar point, jadi bisa dipakai tanpa internet. Lalu **Lanjut menilai**.
+3. **Penilai 2:** Menilai > Gabung sesi penilai > **Pindai QR** (atau buka tautan) > lengkapi identitas sendiri > isi checklist. Kedua penilai menilai bersamaan.
+4. Halaman **Ringkasan** menarik nilai penilai lain otomatis tiap 30 detik saat ada sinyal (atau tekan **Ambil nilai penilai lain**), lalu **Cetak PDF semua point**.
+5. Penilaian yang belum selesai muncul di **Beranda** untuk dilanjutkan. Nama kader yang tercatat ganda karena beda ejaan bisa disatukan lewat **Beranda > Gabungkan / perbaiki nama kader**.
 
 ## Struktur berkas
 
@@ -68,8 +69,9 @@ js/db.js                penyimpanan di perangkat (IndexedDB)
 js/config.js            alamat Apps Script dan kunci bawaan
 js/sync.js              antrean kirim ke Google Sheets
 js/pdf.js               pembuat PDF
+js/qr.js                membuat dan memindai QR undangan
 js/data/tilik.js        isi 25 daftar tilik (209 butir)
-vendor/                 pdf-lib dan font (disertakan agar bisa offline)
+vendor/                 pdf-lib, qrcode-generator (MIT), jsQR (Apache-2.0), dan font, disertakan agar bisa offline
 apps-script/Code.gs     penerima data Google Sheets
 docs/                   panduan Google Sheets dan catatan perubahan teks butir
 ```

@@ -5,6 +5,7 @@ import { TILIK } from './data/tilik.js';
 import { cariPoint, cariKd, semuaPoint, ringkasanSesi, hitungFinal, skorRecord, labelStatus, AMBANG } from './scoring.js';
 import { semuaRecord, ambilRecord, simpanRecord, hapusRecord, kosongkanRecord, ambilPengaturan, simpanPengaturan, sesiRecords } from './db.js';
 import { BAWAAN } from './config.js';
+import { qrSvg, bukaPemindai } from './qr.js';
 import { kirimSemua, ambilSesi, ambilPaket, ujiKoneksi, hitungPending, state as syncState } from './sync.js';
 import { buatPdfPoint, buatPdfRekap, unduhPdf, namaFilePoint, namaFileRekap } from './pdf.js';
 
@@ -83,6 +84,12 @@ function pointPaket(recs) {
   return urutkanPoint(dariLokal ? dariLokal.paket.points.concat(recs.map((r) => r.pointId)) : recs.map((r) => r.pointId));
 }
 
+function undanganPaket(kode, points, rec) {
+  const link = tautanGabungPaket(kode, points, rec);
+  const pesan = `Halo, mohon bantu menilai sebagai Penilai 2 untuk kader ${rec.kader.nama} (${ringkasPoint(points)}) di e-Asesmen Kompetensi Kader.\nKode: ${kode}\nBuka: ${link}`;
+  return panelUndang({ judul: 'Undang Penilai 2', kode, link, pesan });
+}
+
 function tautanGabungPaket(kode, points, rec) {
   const p = { s: kode, ps: points, a: rec.attempt, t: rec.tanggal, k: [rec.kader.nama, rec.kader.desa, rec.kader.posyandu], o: [rec.penilai.nama, rec.penilai.institusi] };
   return baseUrl() + '#/gabung/' + b64encode(p);
@@ -114,19 +121,63 @@ export function statusKd(kd, hasilPerPoint) {
   return { status, label, lulus, final: lengkap.length, dinilai: ada.length, total: pts.length };
 }
 
+// Tarik otomatis data penilai lain selama halaman terbuka dan nilai belum final (tiap 30 detik saat ada sinyal)
+let nomorTarik = 0;
+function tarikOtomatis(ambilFn, statusEl) {
+  const nomor = ++nomorTarik;
+  const hashAwal = location.hash;
+  const masihDiSini = () => nomor === nomorTarik && location.hash === hashAwal;
+  const jalan = async () => {
+    if (!masihDiSini()) return;
+    if (document.visibilityState === 'visible' && navigator.onLine) {
+      statusEl.textContent = 'Memeriksa nilai penilai lain…';
+      await kirimSemua();
+      const r = await ambilFn();
+      if (!masihDiSini()) return;
+      if (r.ok && r.baru) {
+        toast('Data penilai lain diterima.');
+        window.dispatchEvent(new HashChangeEvent('hashchange'));
+        return;
+      }
+      const jam = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+      statusEl.textContent = r.ok ? `Diperiksa otomatis pukul ${jam}, belum ada data baru. Diperiksa lagi tiap 30 detik.` : `Belum bisa memeriksa: ${r.alasan}`;
+    } else {
+      statusEl.textContent = 'Menunggu sinyal untuk memeriksa nilai penilai lain…';
+    }
+    setTimeout(jalan, 30000);
+  };
+  setTimeout(jalan, 1200);
+}
+
 function panelUndang({ judul, kode, link, pesan }) {
+  const wadahQr = h('div', { class: 'qr-wadah' }, h('span', { class: 'muted small' }, 'Membuat QR…'));
+  qrSvg(link, 'QR undangan Penilai 2')
+    .then((el) => wadahQr.replaceChildren(el))
+    .catch(() => wadahQr.replaceChildren(h('span', { class: 'muted small' }, 'QR tidak bisa dibuat. Gunakan tautan atau WhatsApp di bawah.')));
   const salin = h('button', { class: 'btn alt kecil', type: 'button' }, 'Salin tautan');
   salin.addEventListener('click', async () => {
     try {
       await navigator.clipboard.writeText(link);
+      salin.textContent = 'Tersalin ✓';
+      setTimeout(() => (salin.textContent = 'Salin tautan'), 2500);
       toast('Tautan disalin.');
     } catch {
       toast('Tidak bisa menyalin otomatis. Tahan dan salin tautan di atas.');
     }
   });
   const wa = h('a', { class: 'btn kecil', href: 'https://wa.me/?text=' + encodeURIComponent(pesan), target: '_blank', rel: 'noopener' }, 'Kirim lewat WhatsApp');
-  const bagi = navigator.share ? h('button', { class: 'btn alt kecil', type: 'button', onclick: () => navigator.share({ title: 'Sesi penilaian', text: pesan }).catch(() => {}) }, 'Bagikan…') : null;
-  return h('div', { class: 'panel tint' }, h('h3', null, judul), h('p', { class: 'small', style: 'margin:0 0 4px' }, 'Kode'), h('div', { class: 'kode' }, kode), h('div', { class: 'tautan' }, link), h('div', { class: 'row' }, wa, salin, bagi), h('p', { class: 'small muted', style: 'margin:12px 0 0' }, 'Tautan berisi data kader, jadi Penilai 2 bisa membukanya tanpa internet. Nilai gabungan muncul setelah kedua penilai selesai dan data terkirim.'));
+  const bagi = navigator.share ? h('button', { class: 'btn alt kecil', type: 'button', onclick: () => navigator.share({ title: 'Undangan penilaian', text: pesan }).catch(() => {}) }, 'Bagikan…') : null;
+  return h(
+    'div',
+    { class: 'panel tint undang' },
+    h('h3', null, judul),
+    h('p', { class: 'small', style: 'margin:0 0 10px' }, h('b', null, '1. Pindai QR. '), 'Penilai 2 menekan ', h('b', null, 'Pindai QR'), ' di menu Menilai › Gabung sesi penilai, lalu mengarahkan kamera ke layar ini.'),
+    wadahQr,
+    h('p', { class: 'small', style: 'margin:14px 0 6px' }, h('b', null, '2. Atau kirim tautan '), 'lewat WhatsApp, atau salin dan kirim lewat aplikasi lain.'),
+    h('div', { class: 'tautan' }, link),
+    h('div', { class: 'row' }, wa, salin, bagi),
+    h('p', { class: 'small muted', style: 'margin:12px 0 0' }, `Kode cadangan: ${kode}. QR dan tautan berisi data kader dan daftar point, jadi bisa dipakai tanpa internet.`)
+  );
 }
 
 /* =========================================================== BERANDA */
@@ -145,7 +196,27 @@ function bungaSvg() {
   return wrap.firstChild;
 }
 
+// penilaian milik perangkat ini yang belum selesai, dikelompokkan per paket/sesi
+async function penilaianBelumSelesai() {
+  const lokal = (await semuaRecord()).filter((r) => !r.remote);
+  const grup = new Map();
+  for (const r of lokal) {
+    const g = (kodePaket(r.sessionId) || r.sessionId) + '|' + r.role;
+    if (!grup.has(g)) grup.set(g, []);
+    grup.get(g).push(r);
+  }
+  return [...grup.values()]
+    .map((rs) => {
+      const ids = pointPaket(rs);
+      const urut = ids.map((pid) => rs.find((r) => r.pointId === pid)).filter(Boolean);
+      return { ref: urut[0], urut, berikut: urut.find((r) => r.status !== 'selesai'), selesai: urut.filter((r) => r.status === 'selesai').length, ids, updatedAt: Math.max(...rs.map((r) => r.updatedAt || 0)) };
+    })
+    .filter((g) => g.berikut)
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
 export async function beranda() {
+  const belum = await penilaianBelumSelesai();
   const totalPoint = semuaPoint().length;
   const totalButir = semuaPoint().reduce((a, p) => a + p.items.length, 0);
   const pasangBtn = h('button', { type: 'button', class: 'btn alt', hidden: !window.__installPrompt, id: 'btn-pasang' }, 'Pasang di layar utama');
@@ -159,6 +230,30 @@ export async function beranda() {
   const el = h(
     'div',
     null,
+    belum.length &&
+      h(
+        'section',
+        { class: 'panel belum-selesai', 'aria-label': 'Penilaian belum selesai' },
+        h('h2', { style: 'margin-top:0' }, `Penilaian belum selesai (${belum.length})`),
+        h('p', { class: 'small muted', style: 'margin:-4px 0 10px' }, 'Lanjutkan dari sini agar tidak membuat penilaian ganda. Jawaban yang sudah diisi tetap tersimpan.'),
+        h(
+          'ul',
+          { class: 'daftar' },
+          belum.slice(0, 5).map((g) =>
+            h(
+              'li',
+              null,
+              h(
+                'a',
+                { class: 'item-sesi', href: '#/nilai/' + g.berikut.key },
+                h('div', { class: 'kiri' }, h('strong', null, g.ref.kader.nama), h('small', null, `${ringkasPoint(g.ids)} · Penilai ${g.ref.role}`), h('small', { style: 'display:block' }, `${tanggalIndo(g.ref.tanggal)} · ${g.selesai} dari ${g.urut.length} point selesai`)),
+                h('div', { class: 'kanan' }, h('span', { class: 'btn kecil' }, 'Lanjutkan →'))
+              )
+            )
+          )
+        ),
+        belum.length > 5 && h('a', { href: '#/riwayat', class: 'small' }, `Lihat ${belum.length - 5} lainnya di Riwayat`)
+      ),
     h(
       'section',
       { class: 'hero' },
@@ -197,6 +292,8 @@ export async function beranda() {
       h('li', null, h('b', null, `Lulus ≥ ${AMBANG}%`), 'Nilai final = jumlah nilai kedua penilai ÷ (jumlah butir × 2) × 100%.'),
       h('li', null, h('b', null, 'Boleh mengulang'), 'Point yang belum lulus bisa dinilai ulang. Setiap percobaan tersimpan di riwayat.')
     ),
+    h('h2', null, 'Alat'),
+    h('div', { class: 'row' }, h('a', { class: 'btn alt', href: '#/kader' }, 'Gabungkan / perbaiki nama kader'), h('a', { class: 'btn alt', href: '#/rekap' }, 'Rekap per kader')),
     h('footer', { class: 'kaki' }, `${totalPoint} point · ${totalButir} butir · Poltekkes Kemenkes Makassar`)
   );
   return { el, judul: 'Beranda' };
@@ -325,7 +422,7 @@ export async function baru(query) {
     const recs = pts.map((pid) => ({ ...buatRecord({ ...umum, sessionId: `${kode}-${pid}`, point: cariPoint(pid) }), paket: { id: kode, points: pts } }));
     for (const r of recs) await simpanRecord(r);
     await simpanPengaturan({ ...cfg, penilai: umum.penilai });
-    pasang(`#/nilai/${recs[0].key}`);
+    pasang(`#/undang/${kode}`);
   });
 
   const el = h('div', null, h('h1', null, 'Penilaian baru'), h('p', { class: 'muted' }, 'Isi identitas, centang point yang dinilai, lalu mulai menilai. Penilai 2 bergabung lewat satu tautan untuk semua point.'), form);
@@ -410,7 +507,7 @@ export async function gabung(payloadStr) {
 
   if (info) {
     tampilForm(info, false);
-    el.prepend(h('p', { class: 'muted' }, 'Periksa data kader di bawah, lengkapi identitas Anda, lalu mulai menilai.'));
+    el.insertBefore(h('p', { class: 'muted' }, 'Periksa data kader di bawah, lengkapi identitas Anda, lalu mulai menilai.'), isi);
     return { el, judul: 'Gabung sesi' };
   }
 
@@ -418,7 +515,22 @@ export async function gabung(payloadStr) {
   const input = h('input', { type: 'text', name: 'kode', placeholder: 'Tempel tautan atau ketik kode', autocomplete: 'off', autocapitalize: 'characters' });
   const pesan = h('div', { class: 'note', hidden: true, role: 'status' });
   const cari = h('form', { novalidate: true }, h('label', { class: 'f' }, 'Tautan atau kode dari Penilai 1', input), h('div', { class: 'row' }, h('button', { class: 'btn', type: 'submit' }, 'Lanjut'), h('a', { class: 'btn alt', href: '#/' }, 'Batal')), pesan);
-  isi.append(h('p', { class: 'muted' }, 'Minta Penilai 1 membagikan tautan. Membuka tautan itu akan mengisi data kader dan daftar point otomatis, bahkan tanpa internet.'), cari);
+  const POLA_TAUTAN = /#\/gabung\/([A-Za-z0-9_-]+)/;
+  const btnPindai = h('button', { class: 'btn besar', type: 'button' }, h('span', { html: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M7 12h10"/></svg>' }), 'Pindai QR dari HP Penilai 1');
+  btnPindai.addEventListener('click', () =>
+    bukaPemindai({
+      cocok: (t) => POLA_TAUTAN.test(t),
+      onHasil: (t) => {
+        toast('QR terbaca.');
+        pasang('#/gabung/' + t.match(POLA_TAUTAN)[1]);
+      },
+    })
+  );
+  isi.append(
+    h('div', { class: 'panel tint' }, h('p', { style: 'margin:0 0 12px' }, 'Cara paling cepat: minta Penilai 1 menunjukkan QR undangan, lalu pindai dari sini. Data kader dan semua point terisi otomatis, tanpa internet.'), btnPindai),
+    h('h2', { style: 'font-size:1.05rem;margin-top:22px' }, 'Atau tempel tautan / ketik kode'),
+    cari
+  );
   cari.addEventListener('submit', async (e) => {
     e.preventDefault();
     const v = input.value.trim();
@@ -570,6 +682,7 @@ export async function nilai(key) {
           }),
           h('a', { href: '#/paket/' + kode, class: 'ke-paket' }, 'Ringkasan')
         ),
+      kode && rec.role === 1 && h('a', { class: 'btn alt kecil', href: '#/undang/' + kode, style: 'margin:0 0 12px' }, 'Undang Penilai 2 (QR / WA)'),
       h('div', { class: 'bar', role: 'progressbar', 'aria-label': 'Butir terisi' }, bar)
     ),
     rec.status === 'selesai' && h('div', { class: 'note' }, 'Penilaian ini sudah selesai. Mengubah jawaban akan membukanya kembali.'),
@@ -636,22 +749,11 @@ export async function hasil(sessionId) {
 
   // ajakan Penilai 2 (untuk paket, undangan ada di halaman ringkasan)
   if (r1 && !r1.remote && !r2 && kode) {
-    el.append(h('div', { class: 'note' }, 'Undang Penilai 2 dari ', h('a', { href: '#/paket/' + kode }, 'halaman ringkasan'), ', satu tautan untuk semua point.'));
+    el.append(h('div', { class: 'note' }, 'Penilai 2 belum bergabung. ', h('a', { href: '#/undang/' + kode }, 'Tampilkan QR undangan →')));
   } else if (r1 && !r1.remote && !r2) {
     const link = tautanGabung(r1);
     const pesan = `Halo, mohon bantu menilai sebagai Penilai 2 untuk kader ${r1.kader.nama} (${point.kdKode} Point ${point.no}) di e-Asesmen Kompetensi Kader.\nKode sesi: ${sessionId}\nBuka: ${link}`;
-    const salin = h('button', { class: 'btn alt kecil', type: 'button' }, 'Salin tautan');
-    salin.addEventListener('click', async () => {
-      try {
-        await navigator.clipboard.writeText(link);
-        toast('Tautan disalin.');
-      } catch {
-        toast('Tidak bisa menyalin otomatis. Tahan dan salin tautan di atas.');
-      }
-    });
-    const wa = h('a', { class: 'btn kecil', href: 'https://wa.me/?text=' + encodeURIComponent(pesan), target: '_blank', rel: 'noopener' }, 'Kirim lewat WhatsApp');
-    const bagi = navigator.share ? h('button', { class: 'btn alt kecil', type: 'button', onclick: () => navigator.share({ title: 'Sesi penilaian', text: pesan }).catch(() => {}) }, 'Bagikan…') : null;
-    el.append(h('div', { class: 'panel tint' }, h('h3', null, 'Undang Penilai 2'), h('p', { class: 'small', style: 'margin:0 0 4px' }, 'Kode sesi'), h('div', { class: 'kode' }, sessionId), h('div', { class: 'tautan' }, link), h('div', { class: 'row' }, wa, salin, bagi), h('p', { class: 'small muted', style: 'margin:12px 0 0' }, 'Tautan berisi data kader, jadi Penilai 2 bisa membukanya tanpa internet. Nilai gabungan muncul setelah kedua penilai selesai dan data terkirim.')));
+    el.append(panelUndang({ judul: 'Undang Penilai 2', kode: sessionId, link, pesan }));
   }
 
   // tombol aksi
@@ -674,6 +776,9 @@ export async function hasil(sessionId) {
   });
   aksi.append(btnPdf);
   if (!hs.lengkap && cfg.syncUrl) {
+    const st = h('p', { class: 'small muted tarik-status', role: 'status' }, 'Nilai penilai lain diperiksa otomatis…');
+    el.append(st);
+    tarikOtomatis(async () => (kode ? ambilPaket(kode, pointPaket(await paketRecords(kode))) : ambilSesi(sessionId)), st);
     const btnAmbil = h('button', { class: 'btn alt', type: 'button' }, 'Ambil nilai penilai lain');
     btnAmbil.addEventListener('click', async () => {
       btnAmbil.disabled = true;
@@ -725,6 +830,28 @@ export async function hasil(sessionId) {
   return { el, judul: 'Hasil' };
 }
 
+/* =========================================================== UNDANG PENILAI 2 */
+export async function undang(kode) {
+  const recs = await paketRecords(kode);
+  const milik = recs.filter((r) => !r.remote && r.role === 1);
+  if (!milik.length) return { el: h('div', { class: 'kosong-state' }, h('b', null, 'Penilaian tidak ditemukan di perangkat ini'), h('a', { class: 'btn', href: '#/riwayat' }, 'Buka riwayat')), judul: 'Undang Penilai 2' };
+  const ids = pointPaket(recs);
+  const ref = milik[0];
+  const urut = ids.map((pid) => milik.find((r) => r.pointId === pid)).filter(Boolean);
+  const berikut = urut.find((r) => r.status !== 'selesai');
+  const sudahGabung = recs.some((r) => r.role === 2);
+  const el = h(
+    'div',
+    null,
+    h('h1', null, 'Undang Penilai 2'),
+    h('p', { class: 'muted' }, `${ref.kader.nama} · Desa ${ref.kader.desa} · ${ringkasPoint(ids)} (${ids.length} point). Undang Penilai 2 dulu, lalu kalian berdua menilai bersamaan.`),
+    sudahGabung && h('div', { class: 'note' }, 'Data Penilai 2 sudah masuk ke perangkat ini.'),
+    undanganPaket(kode, ids, ref),
+    h('div', { class: 'row', style: 'margin:18px 0 26px' }, berikut ? h('a', { class: 'btn', href: '#/nilai/' + berikut.key }, 'Lanjut menilai →') : h('a', { class: 'btn', href: '#/paket/' + kode }, 'Lihat ringkasan →'), h('a', { class: 'btn alt', href: '#/paket/' + kode }, 'Ringkasan'))
+  );
+  return { el, judul: 'Undang Penilai 2' };
+}
+
 /* =========================================================== PAKET */
 export async function paket(kode) {
   const recs = await paketRecords(kode);
@@ -774,11 +901,8 @@ export async function paket(kode) {
   }
 
   // undangan Penilai 2: satu tautan untuk semua point
-  if (roleSaya === 1 && !recs.some((r) => r.role === 2)) {
-    const link = tautanGabungPaket(kode, ids, ref);
-    const pesan = `Halo, mohon bantu menilai sebagai Penilai 2 untuk kader ${ref.kader.nama} (${ringkasPoint(ids)}) di e-Asesmen Kompetensi Kader.\nKode: ${kode}\nBuka: ${link}`;
-    el.append(panelUndang({ judul: 'Undang Penilai 2', kode, link, pesan }));
-  }
+  if (roleSaya === 1 && !recs.some((r) => r.role === 2)) el.append(undanganPaket(kode, ids, ref));
+  else if (roleSaya === 1) el.append(h('p', { class: 'small' }, h('a', { href: '#/undang/' + kode }, 'Tampilkan lagi QR undangan Penilai 2')));
 
   // aksi
   const aksi = h('div', { class: 'row', style: 'margin-bottom:22px' });
@@ -794,6 +918,11 @@ export async function paket(kode) {
       if (r.baru) window.dispatchEvent(new HashChangeEvent('hashchange'));
     });
     aksi.append(btnAmbil);
+  }
+  if (cfg.syncUrl && final.length < baris.length) {
+    const st = h('p', { class: 'small muted tarik-status', role: 'status' }, 'Nilai penilai lain diperiksa otomatis…');
+    el.append(st);
+    tarikOtomatis(() => ambilPaket(kode, ids), st);
   }
   const btnPdf = h('button', { class: final.length < baris.length && cfg.syncUrl ? 'btn alt' : 'btn', type: 'button' }, final.length === baris.length ? 'Cetak PDF semua point' : 'Cetak PDF semua point (sementara)');
   btnPdf.addEventListener('click', async () => {
@@ -929,7 +1058,7 @@ export async function rekap(kunci) {
   const kk = kunci ? decodeURIComponent(kunci) : '';
   const sel = h('select', { 'aria-label': 'Pilih kader' }, h('option', { value: '' }, 'Pilih kader…'), [...kaderMap.entries()].sort((a, b) => a[1].nama.localeCompare(b[1].nama)).map(([k, v]) => h('option', { value: k, selected: k === kk }, `${v.nama} · ${v.desa} · ${v.posyandu}`)));
   sel.addEventListener('change', () => pasang('#/rekap/' + (sel.value ? encodeURIComponent(sel.value) : '')));
-  el.append(h('label', { class: 'f' }, 'Kader', sel));
+  el.append(h('label', { class: 'f' }, 'Kader', sel), h('p', { class: 'small', style: 'margin:-6px 0 14px' }, 'Nama kader tercatat ganda karena beda ejaan? ', h('a', { href: '#/kader' }, 'Gabungkan kader')));
   if (!kk || !kaderMap.has(kk)) return { el, judul: 'Rekap' };
   const kader = kaderMap.get(kk);
   const miliknya = sesi.filter((s) => kaderKey(s.ref.kader) === kk);
@@ -975,6 +1104,86 @@ export async function rekap(kunci) {
     )
   );
   return { el, judul: 'Rekap' };
+}
+
+/* =========================================================== GABUNGKAN KADER */
+export async function kader() {
+  const all = await semuaRecord();
+  const peta = new Map();
+  for (const r of all) {
+    const k = kaderKey(r.kader);
+    if (!peta.has(k)) peta.set(k, { kader: r.kader, sesi: new Set(), lokal: 0 });
+    const x = peta.get(k);
+    x.sesi.add(kodePaket(r.sessionId) || r.sessionId);
+    if (!r.remote) x.lokal++;
+  }
+  const daftar = [...peta.entries()].sort((a, b) => a[1].kader.nama.localeCompare(b[1].kader.nama));
+  const el = h('div', null, h('h1', null, 'Gabungkan / perbaiki nama kader'), h('p', { class: 'muted' }, 'Pakai ini bila satu kader tercatat dengan ejaan berbeda, misalnya "Ita" dan "Itha", atau desa/posyandu salah ketik. Semua penilaiannya akan disatukan di Rekap.'));
+  if (!daftar.length) {
+    el.append(h('div', { class: 'kosong-state' }, h('b', null, 'Belum ada data kader di perangkat ini')));
+    return { el, judul: 'Gabungkan kader' };
+  }
+  const label = ([, v]) => `${v.kader.nama} · ${v.kader.desa} · ${v.kader.posyandu} (${v.sesi.size} penilaian)`;
+  const selA = h('select', { name: 'a', required: true }, h('option', { value: '' }, 'Pilih kader…'), daftar.map((d) => h('option', { value: d[0] }, label(d))));
+  const selB = h('select', { name: 'b' }, h('option', { value: '' }, '— tidak ada, hanya perbaiki ejaan —'), daftar.map((d) => h('option', { value: d[0] }, label(d))));
+  const nNama = h('input', { type: 'text', name: 'nama', required: true, autocomplete: 'off' });
+  const nDesa = h('input', { type: 'text', name: 'desa', required: true, autocomplete: 'off' });
+  const nPos = h('input', { type: 'text', name: 'pos', required: true, autocomplete: 'off' });
+  const ringkas = h('div', { class: 'note', hidden: true, role: 'status' });
+  const btn = h('button', { class: 'btn', type: 'submit', disabled: true }, 'Simpan perubahan');
+  const form = h(
+    'form',
+    { novalidate: true },
+    h('fieldset', { class: 'blok' }, h('legend', null, '1. Kader yang benar'), h('label', { class: 'f' }, 'Kader yang dipertahankan', selA)),
+    h('fieldset', { class: 'blok' }, h('legend', null, '2. Kader yang digabungkan (salah ketik)'), h('label', { class: 'f' }, 'Gabungkan ke kader di atas', selB)),
+    h('fieldset', { class: 'blok' }, h('legend', null, '3. Ejaan yang dipakai'), h('div', { class: 'grid3' }, h('label', { class: 'f' }, 'Nama kader', nNama), h('label', { class: 'f' }, 'Asal desa', nDesa), h('label', { class: 'f' }, 'Posyandu', nPos))),
+    ringkas,
+    h('div', { class: 'row' }, btn, h('a', { class: 'btn alt', href: '#/' }, 'Batal')),
+    h('p', { class: 'small muted', style: 'margin-top:14px' }, 'Penilaian yang diisi di perangkat ini dikirim ulang ke Google Sheets dengan nama baru. Di Sheets, nama kader mengikuti isian Penilai 1, jadi sebaiknya lakukan di HP Penilai 1. Penilaian di HP lain tidak ikut berubah.')
+  );
+  const sasaran = () => [selA.value, selB.value].filter((v, i, a) => v && a.indexOf(v) === i);
+  const segarkan = () => {
+    const t = sasaran();
+    const n = all.filter((r) => t.includes(kaderKey(r.kader))).length;
+    const baru = { nama: nNama.value.trim(), desa: nDesa.value.trim(), posyandu: nPos.value.trim() };
+    const ok = selA.value && baru.nama && baru.desa && baru.posyandu;
+    btn.disabled = !ok;
+    ringkas.hidden = !ok;
+    if (ok) ringkas.textContent = `${n} catatan penilaian akan memakai: ${baru.nama} · Desa ${baru.desa} · Posyandu ${baru.posyandu}.`;
+  };
+  selA.addEventListener('change', () => {
+    const v = peta.get(selA.value);
+    if (v) {
+      nNama.value = v.kader.nama;
+      nDesa.value = v.kader.desa;
+      nPos.value = v.kader.posyandu;
+    }
+    segarkan();
+  });
+  [selB, nNama, nDesa, nPos].forEach((x) => x.addEventListener('input', segarkan));
+  selB.addEventListener('change', segarkan);
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const t = sasaran();
+    const baru = { nama: nNama.value.trim(), desa: nDesa.value.trim(), posyandu: nPos.value.trim() };
+    const kena = all.filter((r) => t.includes(kaderKey(r.kader)));
+    if (!kena.length || !confirm(`Ubah ${kena.length} catatan penilaian menjadi "${baru.nama} · ${baru.desa} · ${baru.posyandu}"?`)) return;
+    const kini = Date.now();
+    for (const r of kena) {
+      r.kader = { ...baru };
+      if (!r.remote && r.status === 'selesai') {
+        r.updatedAt = kini;
+        r.synced = false;
+      }
+      await simpanRecord(r);
+    }
+    await hitungPending();
+    kirimSemua();
+    toast(`${kena.length} catatan diperbarui.`);
+    pasang('#/rekap/' + encodeURIComponent(kaderKey(baru)));
+  });
+  el.append(form);
+  return { el, judul: 'Gabungkan kader' };
 }
 
 /* =========================================================== PENGATURAN */
@@ -1127,7 +1336,7 @@ export async function tentang() {
     h('ul', null, h('li', null, 'Setiap butir: Sesuai = 1, Tidak Sesuai = 0, untuk masing-masing penilai.'), h('li', null, 'Nilai final = (jumlah nilai Penilai 1 + Penilai 2) ÷ (jumlah butir × 2) × 100%.'), h('li', null, `Lulus bila nilai final minimal ${AMBANG}%; di bawahnya Tidak Lulus dan dapat mengulang.`), h('li', null, 'Kader dinyatakan KOMPETEN pada suatu KD bila semua point dalam KD itu lulus. Semua point dalam satu KD dinilai pada hari yang sama.'), h('li', null, 'KD II Point 3 (antropometri) memakai 72 butir. Kategori kepatuhan: Kurang (<41), Cukup (41-54), Baik (55-61), Sangat Baik (≥62) dari rata-rata skor kedua penilai.')),
     h('h2', null, 'Data dan privasi'),
     h('p', null, 'Penilaian disimpan di peramban perangkat ini. Data hanya dikirim ke Google Sheets milik institusi Anda bila alamat Web App diisi di Pengaturan. Tidak ada pelacak atau layanan pihak ketiga.'),
-    h('p', { class: 'muted small' }, 'Versi 1.3 · Poltekkes Kemenkes Makassar')
+    h('p', { class: 'muted small' }, 'Versi 1.4 · Poltekkes Kemenkes Makassar')
   );
   return { el, judul: 'Tentang' };
 }

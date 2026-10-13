@@ -289,3 +289,19 @@ details.kdp > summary:has(.jml-pilih:not(:empty))::after { margin-left: 4px; }
 a.kembali { display: inline-block; margin-bottom: 8px; font-size: .88rem; text-decoration: none; color: var(--deep); font-weight: 600; }
 ul.daftar-point { margin: 0; padding-left: 18px; font-size: .92rem; }
 ul.daftar-point li { margin: 4px 0; }
+
+/* ---- undangan QR, pemindai, penilaian belum selesai */
+.undang h3 { margin-top: 0; }
+.qr-wadah { display: grid; place-items: center; min-height: 120px; }
+.qr-gambar { width: min(78vw, 340px); background: #fff; border-radius: 14px; padding: 6px; box-shadow: 0 1px 0 var(--line), 0 6px 18px rgba(6, 48, 46, .08); }
+.qr-gambar svg { display: block; width: 100%; height: auto; }
+.btn.besar { display: inline-flex; align-items: center; gap: 10px; padding: 14px 22px; font-size: 1rem; }
+.pindai { position: fixed; inset: 0; z-index: 100; background: #061f1e; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 20px; }
+.pindai-bingkai { position: relative; width: min(92vw, 460px); aspect-ratio: 1; border-radius: 18px; overflow: hidden; background: #000; }
+.pindai-bingkai video { width: 100%; height: 100%; object-fit: cover; }
+.pindai-kotak { position: absolute; inset: 14%; border: 3px solid rgba(255, 255, 255, .85); border-radius: 14px; box-shadow: 0 0 0 999px rgba(0, 0, 0, .35); }
+.pindai-pesan { margin: 0; text-align: center; max-width: 460px; }
+.pindai .btn.alt { color: #fff; border-color: #fff; }
+.belum-selesai { border-color: #d49a00; background: var(--warn-tint); margin-bottom: 22px; }
+.belum-selesai .item-sesi { background: var(--surface); }
+.tarik-status { margin: -6px 0 12px; }
