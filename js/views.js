@@ -734,13 +734,39 @@ export async function setelan(query) {
     // buang kunci dari alamat browser setelah tersimpan
     if (dariTautan) history.replaceState(null, '', location.pathname + '#/setelan');
   });
-  form.querySelector('#bagi-setelan').addEventListener('click', async () => {
+  const panelBagi = h('div', { class: 'panel tint', hidden: true, style: 'margin-top:14px' });
+  form.querySelector('#bagi-setelan').addEventListener('click', () => {
     const c = ambil();
     if (!c.syncUrl || !c.syncKey) return tampil('Isi alamat Web App dan kunci rahasia dulu.', 'warn');
     const link = baseUrl() + '#/setelan?u=' + encodeURIComponent(c.syncUrl) + '&k=' + encodeURIComponent(c.syncKey);
     const pesan = `Setelan e-Asesmen Kompetensi Kader (Google Sheets). Buka di HP Anda, lalu tekan Simpan:\n${link}\n\nTautan ini berisi kunci rahasia, jangan dibagikan di grup umum.`;
-    if (navigator.share) return navigator.share({ title: 'Setelan e-Asesmen', text: pesan }).catch(() => {});
-    window.open('https://wa.me/?text=' + encodeURIComponent(pesan), '_blank', 'noopener');
+    const kotak = h('textarea', { readonly: true, rows: 3, class: 'tautan', style: 'width:100%;resize:none;font:inherit;font-size:.8rem', 'aria-label': 'Tautan setelan' });
+    kotak.value = link;
+    kotak.addEventListener('focus', () => kotak.select());
+    const salin = h('button', { class: 'btn kecil', type: 'button' }, 'Salin tautan');
+    salin.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(link);
+      } catch {
+        kotak.focus();
+        kotak.select();
+        if (!document.execCommand('copy')) return toast('Tidak bisa menyalin otomatis. Tahan tautan di atas lalu pilih Salin.');
+      }
+      salin.textContent = 'Tersalin ✓';
+      toast('Tautan setelan disalin.');
+      setTimeout(() => (salin.textContent = 'Salin tautan'), 2500);
+    });
+    const wa = h('a', { class: 'btn alt kecil', href: 'https://wa.me/?text=' + encodeURIComponent(pesan), target: '_blank', rel: 'noopener' }, 'Kirim lewat WhatsApp');
+    const bagi = navigator.share ? h('button', { class: 'btn alt kecil', type: 'button', onclick: () => navigator.share({ title: 'Setelan e-Asesmen', text: pesan }).catch(() => {}) }, 'Bagikan…') : null;
+    panelBagi.replaceChildren(
+      h('h3', null, 'Tautan setelan untuk penilai lain'),
+      h('p', { class: 'small', style: 'margin:0 0 8px' }, 'Kirim ke masing-masing penilai. Mereka cukup membuka tautan ini di HP-nya lalu menekan Simpan.'),
+      kotak,
+      h('div', { class: 'row', style: 'margin-top:8px' }, salin, wa, bagi),
+      h('p', { class: 'small muted', style: 'margin:10px 0 0' }, 'Tautan berisi kunci rahasia. Kirim lewat japri, jangan di grup umum.')
+    );
+    panelBagi.hidden = false;
+    panelBagi.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   });
   form.querySelector('#uji').addEventListener('click', async () => {
     const c = ambil();
@@ -759,6 +785,7 @@ export async function setelan(query) {
     else if (r.gagal) tampil(`${r.gagal} data gagal dikirim: ${syncState.error}`, 'bad');
     else tampil(r.dikirim ? `${r.dikirim} data terkirim.` : 'Semua data sudah terkirim.');
   });
+  form.append(panelBagi);
   el.append(form);
 
   // cadangan
@@ -813,7 +840,7 @@ export async function tentang() {
     h('ul', null, h('li', null, 'Setiap butir: Sesuai = 1, Tidak Sesuai = 0, untuk masing-masing penilai.'), h('li', null, 'Nilai final = (jumlah nilai Penilai 1 + Penilai 2) ÷ (jumlah butir × 2) × 100%.'), h('li', null, `Lulus bila nilai final minimal ${AMBANG}%; di bawahnya Tidak Lulus dan dapat mengulang.`), h('li', null, 'KD II Point 3 (antropometri) memakai 72 butir. Kategori kepatuhan: Kurang (<41), Cukup (41-54), Baik (55-61), Sangat Baik (≥62) dari rata-rata skor kedua penilai.')),
     h('h2', null, 'Data dan privasi'),
     h('p', null, 'Penilaian disimpan di peramban perangkat ini. Data hanya dikirim ke Google Sheets milik institusi Anda bila alamat Web App diisi di Pengaturan. Tidak ada pelacak atau layanan pihak ketiga.'),
-    h('p', { class: 'muted small' }, 'Versi 1.1 · Poltekkes Kemenkes Makassar')
+    h('p', { class: 'muted small' }, 'Versi 1.1.1 · Poltekkes Kemenkes Makassar')
   );
   return { el, judul: 'Tentang' };
 }
