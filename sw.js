@@ -1,6 +1,6 @@
 // Service worker: aplikasi bisa dibuka dan dipakai tanpa internet.
 // Naikkan VERSI setiap kali file aplikasi diubah agar perangkat mengambil versi baru.
-const VERSI = 'v1.4.0';
+const VERSI = 'v1.5.0';
 const CACHE = 'e-asesmen-kader-' + VERSI;
 const FILE = [
   './', 'index.html', 'manifest.webmanifest',

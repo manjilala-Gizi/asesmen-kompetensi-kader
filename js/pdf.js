@@ -378,7 +378,7 @@ function finalisasi(pen, doc, kiri) {
 }
 
 // ---------- Rekap per kader
-export async function buatPdfRekap({ kader, baris, stKd = new Map() }) {
+export async function buatPdfRekap({ kader, baris, stKd = new Map(), tingkat = null }) {
   // baris: [{ point, sesi:{ref, hasil} | null }]
   const L = window.PDFLib;
   const doc = await L.PDFDocument.create();
@@ -399,8 +399,9 @@ export async function buatPdfRekap({ kader, baris, stKd = new Map() }) {
     ['Asal desa', kader.desa],
     ['Posyandu', kader.posyandu],
     ['Tanggal cetak', tanggalIndo(new Date().toISOString())],
+    ['Tingkatan kader', tingkat ? tingkat.nama : '-'],
     ['KD kompeten', `${[...stKd.values()].filter((x) => x.label === 'KOMPETEN').length} dari ${new Set(baris.map((b) => b.point.kd)).size}`],
-    ['Point lulus', `${lulus} dari ${baris.length}`],
+    ['TKK diperoleh', `${lulus} dari ${baris.length} keterampilan`],
     ['Sudah dinilai lengkap', `${dinilai.length} dari ${baris.length}`],
   ]);
 
@@ -453,10 +454,109 @@ export async function buatPdfRekap({ kader, baris, stKd = new Map() }) {
     pen.y -= h;
   }
   pen.y -= 8;
-  const lines = pen.bungkus('Nilai dan status diambil dari percobaan terakhir untuk setiap point. Lulus bila nilai gabungan dua penilai minimal 80%. Tanda * = nilai sementara (menunggu penilai lain).', LEBAR, 8);
+  const lines = pen.bungkus('Nilai dan status diambil dari percobaan terakhir untuk setiap point. Lulus bila nilai gabungan dua penilai minimal 80% (point lulus = Tanda Kecakapan Kader/TKK). Tanda * = nilai sementara (menunggu penilai lain). Tingkatan: Purwa = KD II dan KD V ditambah 1 KD pilihan; Madya = 4 KD; Utama = 5 KD (Buku Panduan Keterampilan Dasar Kader Bidang Kesehatan, Kemenkes RI 2024).', LEBAR, 8);
   pen.perlu(lines.length * 10 + 6);
   lines.forEach((l, j) => pen.text(l, M, pen.y - 8 - j * 10, 8, f.reg, c.abu));
   return finalisasi(pen, doc, 'Rekap kader');
+}
+
+// ---------- Surat keterangan tingkatan kader (Purwa/Madya/Utama)
+export async function buatPdfSurat({ kader, baris, stKd, tingkat }) {
+  const L = window.PDFLib;
+  const doc = await L.PDFDocument.create();
+  doc.setTitle('Surat Keterangan Tingkatan Kader - ' + kader.nama);
+  const fonts = { reg: await doc.embedFont(L.StandardFonts.Helvetica), bold: await doc.embedFont(L.StandardFonts.HelveticaBold), miring: await doc.embedFont(L.StandardFonts.HelveticaOblique) };
+  const logo = await doc.embedPng(await logoBytes());
+  const pen = new Pen(L, doc, fonts, logo, {
+    judul: 'SURAT KETERANGAN TINGKATAN KADER',
+    subjudul: 'Keterampilan Dasar Kader Bidang Kesehatan',
+    ringkas: 'Surat keterangan - ' + kader.nama,
+    semu: false,
+  });
+  const { c, f } = pen;
+  const paragraf = (t, size = 9.5, font = f.reg, warna = c.ink, jarak = 13.5) => {
+    const ls = pen.bungkus(t, LEBAR, size, font);
+    pen.perlu(ls.length * jarak + 4);
+    ls.forEach((l, i) => pen.text(l, M, pen.y - 10 - i * jarak, size, font, warna));
+    pen.y -= ls.length * jarak + 6;
+  };
+  const tkk = baris.filter((b) => b.sesi && b.sesi.hasil.lengkap && b.sesi.hasil.lulus);
+  const tglTerakhir = tkk.map((b) => b.sesi.ref.tanggal).sort().at(-1);
+
+  pen.teksTengah('Nomor: ............................................................', A4[0] / 2, pen.y - 8, 9.5, f.reg, c.ink);
+  pen.y -= 22;
+  paragraf('Berdasarkan hasil penilaian keterampilan dasar kader bidang kesehatan menggunakan daftar tilik oleh dua penilai, dengan ini menerangkan bahwa:');
+  pen.identitas([
+    ['Nama kader', kader.nama],
+    ['Asal desa', kader.desa],
+    ['Posyandu', kader.posyandu],
+    ['Penilaian terakhir', tglTerakhir ? tanggalIndo(tglTerakhir) : '-'],
+  ]);
+  paragraf(`telah memperoleh Tanda Kecakapan Kader (TKK) sebanyak ${tkk.length} dari ${baris.length} keterampilan dasar dan dinyatakan sebagai:`);
+
+  // tingkatan, ditonjolkan
+  pen.perlu(60);
+  const tb = 48;
+  pen.kotak(M + 60, pen.y - tb, LEBAR - 120, tb, { isi: c.muda, garis: c.teal, tebal: 1.2 });
+  pen.teksTengah(tingkat.nama.toUpperCase(), A4[0] / 2, pen.y - 25, 20, f.bold, tingkat.kode ? c.teal : c.abu);
+  pen.teksTengah('Kelompok keterampilan yang dikuasai: ' + (tingkat.kompeten.length ? tingkat.kompeten.map((k) => 'KD ' + ['', 'I', 'II', 'III', 'IV', 'V'][k]).join(', ') : '-'), A4[0] / 2, pen.y - 39, 8, f.reg, c.ink);
+  pen.y -= tb + 12;
+
+  // ringkasan per KD
+  const W = [300, 70, LEBAR - 370];
+  const X = [M, M + W[0], M + W[0] + W[1]];
+  const hk = 15.5;
+  pen.perlu(hk * 7);
+  ['Kelompok keterampilan', 'TKK', 'Status'].forEach((t, i) => {
+    pen.kotak(X[i], pen.y - hk, W[i], hk, { isi: c.teal, garis: c.teal });
+    pen.text(t, X[i] + 6, pen.y - 11, 8.5, f.bold, c.putih);
+  });
+  pen.y -= hk;
+  const kdList = [...new Set(baris.map((b) => b.point.kd))];
+  for (const kd of kdList) {
+    const bs = baris.filter((b) => b.point.kd === kd);
+    const st = stKd.get(kd);
+    const judul = `${bs[0].point.kdKode}. ${bs[0].point.kdJudul}` + (kd === 2 || kd === 5 ? ' (wajib Purwa)' : '');
+    W.forEach((w, i) => pen.kotak(X[i], pen.y - hk, w, hk));
+    pen.text(judul, X[0] + 6, pen.y - 11, 8.5, f.reg, c.ink);
+    pen.text(`${bs.filter((b) => b.sesi && b.sesi.hasil.lengkap && b.sesi.hasil.lulus).length} / ${bs.length}`, X[1] + 6, pen.y - 11, 8.5, f.bold, c.ink);
+    pen.text(st.label === 'KOMPETEN' ? 'Dikuasai' : 'Belum dikuasai', X[2] + 6, pen.y - 11, 8.5, f.bold, st.label === 'KOMPETEN' ? c.teal : c.abu);
+    pen.y -= hk;
+  }
+  pen.y -= 10;
+
+  // daftar TKK
+  pen.perlu(40);
+  pen.text('Daftar Tanda Kecakapan Kader (TKK) yang diperoleh', M, pen.y - 8, 9.5, f.bold, c.ink);
+  pen.y -= 15;
+  for (const b of tkk) {
+    const ket = `${persen(b.sesi.hasil.pct)} · ${tanggalIndo(b.sesi.ref.tanggal)}`;
+    const lebarKet = f.reg.widthOfTextAtSize(san(ket), 8);
+    const ls = pen.bungkus(`${b.point.id}  ${b.point.judul}`, LEBAR - lebarKet - 30, 8);
+    const hh = ls.length * 9.2 + 1.2;
+    pen.perlu(hh);
+    pen.centang(M + 5, pen.y - 5, c.teal);
+    ls.forEach((l, i) => pen.text(l, M + 14, pen.y - 8 - i * 9.2, 8, f.reg, c.ink));
+    pen.teksKanan(ket, A4[0] - M, pen.y - 8, 7.5, f.reg, c.abu);
+    pen.y -= hh;
+  }
+  pen.y -= 6;
+  paragraf('Purwa = KD V dan KD II + 1 KD pilihan; Madya = 4 KD; Utama = 5 KD; KD dikuasai bila semua keterampilannya lulus (nilai gabungan dua penilai >= 80%). Buku Panduan Keterampilan Dasar Kader Bidang Kesehatan, Kemenkes RI 2024. Dapat digunakan sebagai lampiran pengajuan sertifikat dan pin tingkatan kader.', 7.2, f.miring, c.abu, 9);
+
+  // tanda tangan
+  pen.perlu(84);
+  const kiri = M + 20;
+  const kanan = A4[0] / 2 + 30;
+  const y0 = pen.y - 6;
+  pen.text(`............................., ${tanggalIndo(new Date().toISOString())}`, kanan, y0, 9, f.reg, c.ink);
+  pen.text('Penilai,', kiri, y0 - 13, 9, f.reg, c.ink);
+  pen.text('Mengetahui,', kanan, y0 - 13, 9, f.reg, c.ink);
+  pen.text('Kepala Puskesmas ......................................', kanan, y0 - 25, 9, f.reg, c.ink);
+  pen.text('(.............................................)', kiri, y0 - 68, 9, f.reg, c.ink);
+  pen.text('(.............................................)', kanan, y0 - 68, 9, f.reg, c.ink);
+  pen.text('NIP. ..........................................', kanan, y0 - 79, 8.5, f.reg, c.ink);
+  pen.y = y0 - 84;
+  return finalisasi(pen, doc, 'Surat keterangan tingkatan kader');
 }
 
 export async function unduhPdf(bytes, nama) {
@@ -465,3 +565,4 @@ export async function unduhPdf(bytes, nama) {
 
 export const namaFilePoint = (point, kader, sessionId) => `Asesmen_${slug(kader.nama)}_${point.kdKode.replace(' ', '')}-P${point.no}_${sessionId}`;
 export const namaFileRekap = (kader) => `Rekap_Asesmen_${slug(kader.nama)}`;
+export const namaFileSurat = (kader) => `Surat_Keterangan_Tingkatan_${slug(kader.nama)}`;

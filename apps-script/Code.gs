@@ -20,7 +20,7 @@
  * Sheet yang dibuat otomatis:
  *   Data_Penilaian : satu baris per penilai per point (data mentah)
  *   Hasil_Final    : satu baris per sesi dan point, nilai gabungan dua penilai
- *   Rekap_Kader    : status terbaru tiap kader pada setiap point
+ *   Rekap_Kader    : status terbaru tiap kader pada setiap point, jumlah TKK, KD kompeten, tingkatan
  */
 
 var LULUS = 80; // persen
@@ -153,7 +153,20 @@ function hitungFinal_(kode, pointId) {
   if (baris) fin.getRange(baris, 1, 1, rowF.length).setValues([rowF]); else fin.appendRow(rowF);
 }
 
-/** Rekap_Kader: untuk setiap kader, hasil terbaru (percobaan tertinggi) pada tiap point. */
+var ROMAWI = { '1': 'I', '2': 'II', '3': 'III', '4': 'IV', '5': 'V' };
+
+/** Tingkatan kader (Buku Panduan Keterampilan Dasar Kader Bidang Kesehatan, Kemenkes 2024):
+ *  Purwa = KD V dan KD II wajib + 1 KD pilihan (I/III/IV), Madya = 4 KD, Utama = 5 KD. */
+function tingkatan_(kompeten) {
+  var ada = {};
+  kompeten.forEach(function (k) { ada[k] = true; });
+  if (!ada['5'] || !ada['2']) return 'Belum bertingkat';
+  var pilihan = ['1', '3', '4'].filter(function (k) { return ada[k]; }).length;
+  return ['Belum bertingkat', 'Kader Purwa', 'Kader Madya', 'Kader Utama'][Math.min(3, pilihan)];
+}
+
+/** Rekap_Kader: untuk setiap kader, hasil terbaru (percobaan tertinggi) pada tiap point,
+ *  jumlah TKK (point lulus), KD yang dikuasai, dan tingkatan kader. */
 function rekap_() {
   var fv = sheet_('Hasil_Final', HEAD_FINAL).getDataRange().getValues(), terbaru = {}, kader = {};
   for (var i = 1; i < fv.length; i++) {
@@ -163,18 +176,21 @@ function rekap_() {
     if (!L || pc > L.pc || (pc === L.pc && t >= L.t)) terbaru[key] = { pc: pc, t: t, persen: fv[i][16], status: fv[i][17] };
     kader[kk] = [fv[i][5], fv[i][6], fv[i][7]];
   }
-  var head = ['kader', 'desa', 'posyandu'].concat(POINT_IDS, ['point_lulus', 'point_dinilai']);
+  var head = ['kader', 'desa', 'posyandu'].concat(POINT_IDS, ['point_lulus', 'point_dinilai', 'tkk', 'kd_kompeten', 'tingkatan']);
   var rows = [head];
   Object.keys(kader).forEach(function (kk) {
-    var row = kader[kk].slice(), lulus = 0, dinilai = 0;
+    var row = kader[kk].slice(), lulus = 0, dinilai = 0, lulusPer = {}, jumlahPer = {};
     POINT_IDS.forEach(function (pid) {
+      var kd = pid.split('.')[0];
+      jumlahPer[kd] = (jumlahPer[kd] || 0) + 1;
       var L = terbaru[kk + '#' + pid];
       if (!L) { row.push(''); return; }
       dinilai++;
-      if (L.status === 'LULUS') lulus++;
+      if (L.status === 'LULUS') { lulus++; lulusPer[kd] = (lulusPer[kd] || 0) + 1; }
       row.push(L.persen + '% ' + L.status);
     });
-    row.push(lulus, dinilai);
+    var kompeten = Object.keys(jumlahPer).filter(function (kd) { return lulusPer[kd] === jumlahPer[kd]; });
+    row.push(lulus, dinilai, lulus + '/' + POINT_IDS.length, kompeten.map(function (kd) { return ROMAWI[kd]; }).join(', '), tingkatan_(kompeten));
     rows.push(row);
   });
   // ditulis sekaligus (bukan baris per baris) agar tetap cepat saat kader sudah banyak

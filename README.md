@@ -22,6 +22,9 @@ Aplikasi web (PWA) untuk menilai kompetensi kader posyandu dengan daftar tilik K
 | Percobaan ulang | Setiap percobaan tersimpan di riwayat |
 | Banyak point sekaligus | Point dipilih dengan centang (pilih semua per KD). Identitas diisi sekali, Penilai 2 bergabung dengan satu tautan untuk semua point |
 | Status KD | KOMPETEN bila semua point dalam KD lulus. Semua point dalam satu KD dinilai pada hari yang sama |
+| TKK | Point yang lulus = Tanda Kecakapan Kader untuk keterampilan itu (25 TKK) |
+| Tingkatan kader | **Purwa**: KD V dan KD II (wajib) + 1 KD pilihan (I/III/IV) · **Madya**: 4 KD · **Utama**: 5 KD. Syarat Lomba Kader minimal Purwa. Sumber: Buku Panduan Keterampilan Dasar Kader Bidang Kesehatan, Kemenkes RI 2024 |
+| Surat keterangan | Rekap > **Cetak Surat Keterangan Tingkatan** (PDF, kolom tanda tangan penilai dan Kepala Puskesmas), tersedia mulai Kader Purwa |
 | KD II Point 3 | 72 butir dalam 6 bagian, ditambah kategori kepatuhan (Kurang, Cukup, Baik, Sangat Baik) dari rata-rata skor kedua penilai |
 
 Perubahan teks butir dibanding dokumen asli (ejaan, penomoran) ada di [`docs/CATATAN-PERUBAHAN-TEKS.md`](docs/CATATAN-PERUBAHAN-TEKS.md).

@@ -83,3 +83,36 @@ export function ringkasanSesi(point, recs) {
   const r2 = recs.find((r) => r.role === 2);
   return { r1, r2, hasil: hitungFinal(point, r1, r2) };
 }
+
+// Tingkatan kader (Buku Panduan Keterampilan Dasar Kader Bidang Kesehatan, Kemenkes 2024):
+//   Purwa  = KD V (Pengelolaan Posyandu) + KD II (Bayi & Balita) wajib, ditambah 1 KD pilihan (I, III, atau IV)
+//   Madya  = 3 kelompok Purwa ditambah 1 KD pilihan lagi (4 kelompok)
+//   Utama  = seluruh 5 kelompok
+// Satu KD dikuasai (kompeten) bila semua point-nya lulus = semua Tanda Kecakapan Kader (TKK) KD itu diperoleh.
+export const KD_WAJIB = [5, 2];
+export const KD_PILIHAN = [1, 3, 4];
+const ROMAWI = ['', 'I', 'II', 'III', 'IV', 'V'];
+const daftarKd = (arr) => arr.map((k) => 'KD ' + ROMAWI[k]).join(', ').replace(/, ([^,]*)$/, ' dan $1');
+
+export function tingkatanKader(kompeten) {
+  const ada = new Set(kompeten);
+  const wajib = KD_WAJIB.every((k) => ada.has(k));
+  const pilihan = KD_PILIHAN.filter((k) => ada.has(k));
+  let kode = 0;
+  if (wajib) kode = Math.min(3, pilihan.length);
+  const nama = ['Belum bertingkat', 'Kader Purwa', 'Kader Madya', 'Kader Utama'][kode];
+  let petunjuk = '';
+  if (kode < 3) {
+    const target = ['Purwa', 'Madya', 'Utama'][kode];
+    const atau = (arr) => arr.map((k) => 'KD ' + ROMAWI[k]).join(', ').replace(/, ([^,]*)$/, arr.length > 2 ? ', atau $1' : ' atau $1');
+    const kurangWajib = KD_WAJIB.filter((k) => !ada.has(k)).sort();
+    const sisaPilihan = KD_PILIHAN.filter((k) => !ada.has(k));
+    const butuh = kode + 1 - pilihan.length;
+    const bagian = [];
+    if (kurangWajib.length) bagian.push(`${daftarKd(kurangWajib)} (wajib)`);
+    if (target === 'Utama') bagian.push(daftarKd(sisaPilihan));
+    else if (butuh > 0) bagian.push(`${butuh} KD pilihan (${atau(sisaPilihan)})`);
+    petunjuk = `Menuju Kader ${target}: masih perlu ${bagian.join(', ditambah ')} kompeten.`;
+  }
+  return { kode, nama, singkat: ['Belum', 'Purwa', 'Madya', 'Utama'][kode], lomba: kode >= 1, petunjuk, kompeten: [...ada].sort() };
+}

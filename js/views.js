@@ -2,12 +2,12 @@
 
 import { h, toast, kodeSesi, hariIni, tanggalIndo, waktuIndo, norm, kaderKey, persen, b64encode, b64decode, unduh, debounce, slug } from './util.js';
 import { TILIK } from './data/tilik.js';
-import { cariPoint, cariKd, semuaPoint, ringkasanSesi, hitungFinal, skorRecord, labelStatus, AMBANG } from './scoring.js';
+import { cariPoint, cariKd, semuaPoint, ringkasanSesi, hitungFinal, skorRecord, labelStatus, AMBANG, tingkatanKader, KD_WAJIB } from './scoring.js';
 import { semuaRecord, ambilRecord, simpanRecord, hapusRecord, kosongkanRecord, ambilPengaturan, simpanPengaturan, sesiRecords } from './db.js';
 import { BAWAAN } from './config.js';
 import { qrSvg, bukaPemindai } from './qr.js';
 import { kirimSemua, ambilSesi, ambilPaket, ujiKoneksi, hitungPending, state as syncState } from './sync.js';
-import { buatPdfPoint, buatPdfRekap, unduhPdf, namaFilePoint, namaFileRekap } from './pdf.js';
+import { buatPdfPoint, buatPdfRekap, buatPdfSurat, unduhPdf, namaFilePoint, namaFileRekap, namaFileSurat } from './pdf.js';
 
 const ROM = ['', 'I', 'II', 'III', 'IV', 'V'];
 const WARNA = ['', '#00b8ab', '#62c0d0', '#77d68f', '#cddc2b', '#0b6b66'];
@@ -268,11 +268,12 @@ export async function beranda() {
       bungaSvg()
     ),
     h('h2', null, 'Pilih kompetensi'),
+    h('p', { class: 'small muted', style: 'margin:-6px 0 12px' }, 'Tingkatan kader: Purwa = KD II dan KD V (wajib) ditambah 1 KD lain · Madya = 4 KD · Utama = 5 KD. Satu KD dikuasai bila semua point-nya lulus (TKK).'),
     h(
       'ul',
       { class: 'daftar-kd' },
       TILIK.map((k) =>
-        h('li', null, h('a', { href: `#/baru?kd=${k.kd}` }, lencana(k.kd), h('span', null, h('strong', null, `${k.kode}. ${k.judul}`)), h('span', { class: 'jml' }, `${k.points.length} point · ${k.points.reduce((a, p) => a + p.items.length, 0)} butir`)))
+        h('li', null, h('a', { href: `#/baru?kd=${k.kd}` }, lencana(k.kd), h('span', null, h('strong', null, `${k.kode}. ${k.judul}`), KD_WAJIB.includes(k.kd) && h('span', { class: 'tag-wajib' }, 'Wajib Purwa')), h('span', { class: 'jml' }, `${k.points.length} point · ${k.points.reduce((a, p) => a + p.items.length, 0)} butir`)))
       )
     ),
     h('h2', null, 'Cara memakai'),
@@ -338,7 +339,7 @@ export async function baru(query) {
     return h(
       'details',
       { class: 'kdp', open: kdBuka === k.kd || (!kdBuka && !pointAwal && k.kd === 1) || k.points.some((p) => p.id === pointAwal) },
-      h('summary', null, lencana(k.kd), h('span', null, `${k.kode}. ${k.judul}`), hitung),
+      h('summary', null, lencana(k.kd), h('span', null, `${k.kode}. ${k.judul}`, KD_WAJIB.includes(k.kd) && h('span', { class: 'tag-wajib' }, 'Wajib Purwa')), hitung),
       h(
         'div',
         { class: 'pilih-point' },
@@ -364,14 +365,26 @@ export async function baru(query) {
 
   // isi otomatis desa/posyandu bila kader sudah pernah dinilai
   const nm = form.elements.kNama;
+  // hanya kolom yang masih kosong yang diisi otomatis, supaya tidak menempel pada ketikan penilai
+  const terisiOtomatis = new Set();
   nm.addEventListener('change', () => {
     const k = [...kaderUnik.values()].find((x) => norm(x.nama) === norm(nm.value));
     if (k) {
-      form.elements.kDesa.value = k.desa;
-      form.elements.kPos.value = k.posyandu;
+      [['kDesa', k.desa], ['kPos', k.posyandu]].forEach(([n, v]) => {
+        const el = form.elements[n];
+        if (!el.value.trim()) {
+          el.value = v;
+          terisiOtomatis.add(el);
+        }
+      });
     }
     hitungPercobaan();
   });
+  ['kDesa', 'kPos'].forEach((n) =>
+    form.elements[n].addEventListener('focus', (e) => {
+      if (terisiOtomatis.delete(e.target)) e.target.select();
+    })
+  );
   // percobaan ke- = jumlah penilaian sebelumnya pada point yang sama untuk kader ini, ditambah 1
   const hitungPercobaan = () => {
     const pts = terpilih();
@@ -900,6 +913,8 @@ export async function paket(kode) {
     el.append(h('div', { class: 'note' }, `Penilaian Anda sudah selesai. Nilai final muncul setelah penilai lain selesai dan datanya diambil (${final.length} dari ${baris.length} point sudah final).`));
   }
 
+  el.append(h('p', { class: 'small', style: 'margin:-6px 0 16px' }, h('a', { href: '#/rekap/' + encodeURIComponent(kaderKey(ref.kader)) }, 'Lihat tingkatan kader (Purwa/Madya/Utama) dan TKK di Rekap →')));
+
   // undangan Penilai 2: satu tautan untuk semua point
   if (roleSaya === 1 && !recs.some((r) => r.role === 2)) el.append(undanganPaket(kode, ids, ref));
   else if (roleSaya === 1) el.append(h('p', { class: 'small' }, h('a', { href: '#/undang/' + kode }, 'Tampilkan lagi QR undangan Penilai 2')));
@@ -1071,20 +1086,35 @@ export async function rekap(kunci) {
   const hasilPer = new Map(barisPdf.filter((b) => b.sesi).map((b) => [b.point.id, b.sesi.hasil]));
   const stKd = new Map(TILIK.map((k) => [k.kd, statusKd(k.kd, hasilPer)]));
   const kdKompeten = [...stKd.values()].filter((x) => x.label === 'KOMPETEN').length;
-  const btn = h('button', { class: 'btn', type: 'button' }, 'Cetak PDF rekap');
-  btn.addEventListener('click', async () => {
-    btn.disabled = true;
-    try {
-      const bytes = await buatPdfRekap({ kader, baris: barisPdf, stKd });
-      await unduhPdf(bytes, namaFileRekap(kader));
-    } catch (e) {
-      console.error(e);
-      toast('PDF gagal dibuat: ' + (e.message || e));
-    }
-    btn.disabled = false;
-  });
+  const tingkat = tingkatanKader(TILIK.filter((k) => stKd.get(k.kd).label === 'KOMPETEN').map((k) => k.kd));
+  const tombolPdf = (label, buat, nama, kelas = 'btn') => {
+    const b = h('button', { class: kelas, type: 'button' }, label);
+    b.addEventListener('click', async () => {
+      b.disabled = true;
+      try {
+        await unduhPdf(await buat(), nama);
+      } catch (e) {
+        console.error(e);
+        toast('PDF gagal dibuat: ' + (e.message || e));
+      }
+      b.disabled = false;
+    });
+    return b;
+  };
+  const btn = tombolPdf('Cetak PDF rekap', () => buatPdfRekap({ kader, baris: barisPdf, stKd, tingkat }), namaFileRekap(kader), 'btn alt');
+  const btnSurat = tombolPdf('Cetak Surat Keterangan Tingkatan', () => buatPdfSurat({ kader, baris: barisPdf, stKd, tingkat }), namaFileSurat(kader));
+  if (!tingkat.kode) btnSurat.disabled = true;
   el.append(
-    h('div', { class: 'panel tint' }, h('b', null, kader.nama), h('div', { class: 'small muted' }, `Desa ${kader.desa} · Posyandu ${kader.posyandu}`), h('p', { style: 'margin:10px 0 12px' }, h('b', null, `${kdKompeten} dari ${TILIK.length} KD kompeten`), ` · ${lulus} dari ${barisPdf.length} point lulus · ${dinilai.length} point sudah final`), btn),
+    h(
+      'div',
+      { class: 'panel tint rekap-kader' },
+      h('div', { class: 'rekap-kepala' }, h('div', null, h('b', null, kader.nama), h('div', { class: 'small muted' }, `Desa ${kader.desa} · Posyandu ${kader.posyandu}`)), h('div', { class: 'tingkat t' + tingkat.kode }, h('span', null, 'Tingkatan'), h('b', null, tingkat.nama))),
+      h('p', { style: 'margin:12px 0 4px' }, h('b', null, `TKK diperoleh: ${lulus} dari ${barisPdf.length}`), ` · ${kdKompeten} dari ${TILIK.length} KD kompeten · ${dinilai.length} point sudah final`),
+      tingkat.petunjuk && h('p', { class: 'small', style: 'margin:0 0 4px' }, tingkat.petunjuk),
+      h('p', { class: 'small ' + (tingkat.lomba ? 'lomba-ok' : 'muted'), style: 'margin:0 0 12px' }, tingkat.lomba ? '✓ Memenuhi syarat ikut Lomba Kader (minimal Kader Purwa).' : 'Syarat ikut Lomba Kader: minimal Kader Purwa.'),
+      h('div', { class: 'row' }, btnSurat, btn),
+      !tingkat.kode && h('p', { class: 'small muted', style: 'margin:8px 0 0' }, 'Surat keterangan bisa dicetak setelah kader mencapai Kader Purwa.')
+    ),
     h(
       'div',
       { class: 'rekap-grid' },
@@ -1092,11 +1122,11 @@ export async function rekap(kunci) {
         h(
           'section',
           { class: 'rekap-kd' },
-          h('h3', { class: 'kd-judul' }, h('span', null, `${k.kode}. ${k.judul}`), h('span', { class: 'chip ' + stKd.get(k.kd).status }, stKd.get(k.kd).label)),
+          h('h3', { class: 'kd-judul' }, h('span', null, `${k.kode}. ${k.judul}`, KD_WAJIB.includes(k.kd) && h('span', { class: 'tag-wajib' }, 'Wajib Purwa')), h('span', { class: 'chip ' + stKd.get(k.kd).status }, stKd.get(k.kd).label)),
           barisPdf
             .filter((b) => b.point.kd === k.kd)
             .map((b) => {
-              const isi = [h('span', null, h('b', null, `${b.point.no}. `), b.point.judul), b.sesi ? h('span', { style: 'text-align:right' }, chipStatus(b.sesi.hasil.status), ' ', b.sesi.hasil.lengkap && h('b', null, persen(b.sesi.hasil.pct))) : h('span', { class: 'muted small' }, 'Belum dinilai')];
+              const isi = [h('span', null, h('b', null, `${b.point.no}. `), b.point.judul, b.sesi && b.sesi.hasil.lulus && b.sesi.hasil.lengkap && h('span', { class: 'tkk' }, 'TKK ✓')), b.sesi ? h('span', { style: 'text-align:right' }, chipStatus(b.sesi.hasil.status), ' ', b.sesi.hasil.lengkap && h('b', null, persen(b.sesi.hasil.pct))) : h('span', { class: 'muted small' }, 'Belum dinilai')];
               return b.sesi ? h('a', { class: 'rekap-row', href: '#/hasil/' + b.sesi.id }, isi) : h('div', { class: 'rekap-row' }, isi);
             })
         )
@@ -1333,10 +1363,13 @@ export async function tentang() {
     h('h1', null, 'Tentang aplikasi'),
     h('p', null, 'e-Asesmen Kompetensi Kader membantu penilai mengisi daftar tilik kompetensi kader posyandu (KD I sampai KD V), menggabungkan nilai dua penilai, dan mencetak hasilnya ke PDF.'),
     h('h2', null, 'Aturan perhitungan'),
-    h('ul', null, h('li', null, 'Setiap butir: Sesuai = 1, Tidak Sesuai = 0, untuk masing-masing penilai.'), h('li', null, 'Nilai final = (jumlah nilai Penilai 1 + Penilai 2) ÷ (jumlah butir × 2) × 100%.'), h('li', null, `Lulus bila nilai final minimal ${AMBANG}%; di bawahnya Tidak Lulus dan dapat mengulang.`), h('li', null, 'Kader dinyatakan KOMPETEN pada suatu KD bila semua point dalam KD itu lulus. Semua point dalam satu KD dinilai pada hari yang sama.'), h('li', null, 'KD II Point 3 (antropometri) memakai 72 butir. Kategori kepatuhan: Kurang (<41), Cukup (41-54), Baik (55-61), Sangat Baik (≥62) dari rata-rata skor kedua penilai.')),
+    h('ul', null, h('li', null, 'Setiap butir: Sesuai = 1, Tidak Sesuai = 0, untuk masing-masing penilai.'), h('li', null, 'Nilai final = (jumlah nilai Penilai 1 + Penilai 2) ÷ (jumlah butir × 2) × 100%.'), h('li', null, `Lulus bila nilai final minimal ${AMBANG}%; di bawahnya Tidak Lulus dan dapat mengulang.`), h('li', null, 'Point yang lulus = Tanda Kecakapan Kader (TKK) untuk keterampilan itu. Kader dinyatakan KOMPETEN pada suatu KD bila semua point dalam KD itu lulus. Semua point dalam satu KD dinilai pada hari yang sama.'), h('li', null, 'KD II Point 3 (antropometri) memakai 72 butir. Kategori kepatuhan: Kurang (<41), Cukup (41-54), Baik (55-61), Sangat Baik (≥62) dari rata-rata skor kedua penilai.')),
+    h('h2', null, 'Tingkatan kader'),
+    h('p', { class: 'small muted' }, 'Sesuai Buku Panduan Keterampilan Dasar Kader Bidang Kesehatan (Kemenkes RI, 2024).'),
+    h('ul', null, h('li', null, h('b', null, 'Kader Purwa: '), 'menguasai KD V (Pengelolaan Posyandu) dan KD II (Bayi & Balita), ditambah 1 KD pilihan: KD I, KD III, atau KD IV.'), h('li', null, h('b', null, 'Kader Madya: '), '3 KD Purwa ditambah 1 KD pilihan lagi (4 KD).'), h('li', null, h('b', null, 'Kader Utama: '), 'menguasai seluruh 5 KD.'), h('li', null, 'Syarat ikut Lomba Kader: minimal Kader Purwa. Kader yang belum lulus diberi bimbingan lalu dinilai kembali.')),
     h('h2', null, 'Data dan privasi'),
     h('p', null, 'Penilaian disimpan di peramban perangkat ini. Data hanya dikirim ke Google Sheets milik institusi Anda bila alamat Web App diisi di Pengaturan. Tidak ada pelacak atau layanan pihak ketiga.'),
-    h('p', { class: 'muted small' }, 'Versi 1.4 · Poltekkes Kemenkes Makassar')
+    h('p', { class: 'muted small' }, 'Versi 1.5 · Poltekkes Kemenkes Makassar')
   );
   return { el, judul: 'Tentang' };
 }

@@ -305,3 +305,16 @@ ul.daftar-point li { margin: 4px 0; }
 .belum-selesai { border-color: #d49a00; background: var(--warn-tint); margin-bottom: 22px; }
 .belum-selesai .item-sesi { background: var(--surface); }
 .tarik-status { margin: -6px 0 12px; }
+
+/* ---- tingkatan kader & TKK */
+.tag-wajib { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 999px; background: var(--warn-tint); color: #7a5400; font-size: .7rem; font-weight: 600; vertical-align: middle; white-space: nowrap; }
+.daftar-kd .tag-wajib { margin: 4px 0 0; display: table; }
+.tkk { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 6px; background: var(--tint); color: var(--deep); font-size: .7rem; font-weight: 700; }
+.rekap-kepala { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.tingkat { border-radius: 12px; padding: 8px 14px; text-align: right; background: #e8ecec; color: #3c4a49; }
+.tingkat span { display: block; font-size: .72rem; opacity: .85; }
+.tingkat b { font-size: 1.15rem; line-height: 1.2; }
+.tingkat.t1 { background: #cfe9e3; color: var(--deep); }
+.tingkat.t2 { background: var(--teal); color: #fff; }
+.tingkat.t3 { background: var(--deep); color: #fff; }
+.lomba-ok { color: var(--deep); font-weight: 600; }
