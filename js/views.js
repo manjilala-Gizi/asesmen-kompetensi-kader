@@ -691,9 +691,16 @@ export async function rekap(kunci) {
 }
 
 /* =========================================================== PENGATURAN */
-export async function setelan() {
+export async function setelan(query) {
   const cfg = await ambilPengaturan();
   const el = h('div', null, h('h1', null, 'Pengaturan'));
+  // tautan setelan dari pengelola: #/setelan?u=<alamat /exec>&k=<kunci>
+  const dariTautan = query && query.get('u') && query.get('k') ? { syncUrl: query.get('u'), syncKey: query.get('k') } : null;
+  if (dariTautan) {
+    el.append(h('div', { class: 'note' }, h('b', null, 'Setelan Google Sheets dari tautan. '), 'Periksa alamat di bawah, lalu tekan Simpan.'));
+    cfg.syncUrl = dariTautan.syncUrl;
+    cfg.syncKey = dariTautan.syncKey;
+  }
   const form = h('form', { novalidate: true });
   const status = h('div', { class: 'note', hidden: true, role: 'status' });
   form.append(
@@ -702,12 +709,13 @@ export async function setelan() {
       'fieldset',
       { class: 'blok' },
       h('legend', null, 'Google Sheets'),
-      h('p', { class: 'muted small' }, 'Isi dari panduan di docs/PANDUAN-GOOGLE-SHEETS.md. Kosongkan bila hanya ingin menyimpan di perangkat.'),
+      h('p', { class: 'muted small' }, 'Diisi sekali per perangkat. Cara termudah: buka "tautan setelan" yang dibagikan pengelola, lalu tekan Simpan. Kosongkan bila hanya ingin menyimpan di perangkat ini.'),
       h('label', { class: 'f' }, 'Alamat Web App (Apps Script)', h('input', { type: 'url', name: 'syncUrl', value: cfg.syncUrl, placeholder: 'https://script.google.com/macros/s/.../exec', autocomplete: 'off' })),
       h('label', { class: 'f' }, 'Kunci rahasia', h('input', { type: 'text', name: 'syncKey', value: cfg.syncKey, autocomplete: 'off', autocapitalize: 'off' }))
     ),
     status,
-    h('div', { class: 'row' }, h('button', { class: 'btn', type: 'submit' }, 'Simpan'), h('button', { class: 'btn alt', type: 'button', id: 'uji' }, 'Uji koneksi'), h('button', { class: 'btn alt', type: 'button', id: 'kirim' }, 'Kirim data sekarang'))
+    h('div', { class: 'row' }, h('button', { class: 'btn', type: 'submit' }, 'Simpan'), h('button', { class: 'btn alt', type: 'button', id: 'uji' }, 'Uji koneksi'), h('button', { class: 'btn alt', type: 'button', id: 'kirim' }, 'Kirim data sekarang')),
+    h('div', { class: 'row', style: 'margin-top:10px' }, h('button', { class: 'btn alt', type: 'button', id: 'bagi-setelan' }, 'Bagikan tautan setelan ke penilai lain'))
   );
   const tampil = (teks, cls = '') => {
     status.hidden = false;
@@ -723,6 +731,16 @@ export async function setelan() {
     await simpanPengaturan(ambil());
     hitungPending();
     tampil('Pengaturan tersimpan.');
+    // buang kunci dari alamat browser setelah tersimpan
+    if (dariTautan) history.replaceState(null, '', location.pathname + '#/setelan');
+  });
+  form.querySelector('#bagi-setelan').addEventListener('click', async () => {
+    const c = ambil();
+    if (!c.syncUrl || !c.syncKey) return tampil('Isi alamat Web App dan kunci rahasia dulu.', 'warn');
+    const link = baseUrl() + '#/setelan?u=' + encodeURIComponent(c.syncUrl) + '&k=' + encodeURIComponent(c.syncKey);
+    const pesan = `Setelan e-Asesmen Kompetensi Kader (Google Sheets). Buka di HP Anda, lalu tekan Simpan:\n${link}\n\nTautan ini berisi kunci rahasia, jangan dibagikan di grup umum.`;
+    if (navigator.share) return navigator.share({ title: 'Setelan e-Asesmen', text: pesan }).catch(() => {});
+    window.open('https://wa.me/?text=' + encodeURIComponent(pesan), '_blank', 'noopener');
   });
   form.querySelector('#uji').addEventListener('click', async () => {
     const c = ambil();
@@ -795,7 +813,7 @@ export async function tentang() {
     h('ul', null, h('li', null, 'Setiap butir: Sesuai = 1, Tidak Sesuai = 0, untuk masing-masing penilai.'), h('li', null, 'Nilai final = (jumlah nilai Penilai 1 + Penilai 2) ÷ (jumlah butir × 2) × 100%.'), h('li', null, `Lulus bila nilai final minimal ${AMBANG}%; di bawahnya Tidak Lulus dan dapat mengulang.`), h('li', null, 'KD II Point 3 (antropometri) memakai 72 butir. Kategori kepatuhan: Kurang (<41), Cukup (41-54), Baik (55-61), Sangat Baik (≥62) dari rata-rata skor kedua penilai.')),
     h('h2', null, 'Data dan privasi'),
     h('p', null, 'Penilaian disimpan di peramban perangkat ini. Data hanya dikirim ke Google Sheets milik institusi Anda bila alamat Web App diisi di Pengaturan. Tidak ada pelacak atau layanan pihak ketiga.'),
-    h('p', { class: 'muted small' }, 'Versi 1.0 · Poltekkes Kemenkes Makassar')
+    h('p', { class: 'muted small' }, 'Versi 1.1 · Poltekkes Kemenkes Makassar')
   );
   return { el, judul: 'Tentang' };
 }

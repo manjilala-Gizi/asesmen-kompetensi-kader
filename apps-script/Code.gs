@@ -10,7 +10,10 @@
  *      Execute as: Me
  *      Who has access: Anyone
  *    Salin URL yang berakhiran /exec.
- * 5. Di aplikasi: Setelan > isi "Alamat Web App" dengan URL itu dan "Kunci" dengan kata sandi yang sama.
+ * 5. Di aplikasi: Setelan > isi "Alamat Web App" dengan URL itu dan "Kunci rahasia" dengan kata sandi yang sama,
+ *    Simpan, lalu "Bagikan tautan setelan" ke HP penilai lain lewat WhatsApp.
+ *
+ * Panduan lengkap: docs/PANDUAN-GOOGLE-SHEETS.md
  *
  * Setiap kali kode ini diubah, buat "New deployment" lagi (atau Manage deployments > Edit > New version).
  *
@@ -71,7 +74,7 @@ function lengkapSelesai_(row) {
 function doGet(e) {
   var p = (e && e.parameter) || {};
   if (!benar_(p.key)) return out_({ ok: false, error: 'Kunci salah atau belum diatur di Script properties' });
-  if (p.action === 'ping') return out_({ ok: true });
+  if (p.action === 'ping') return out_({ ok: true, nama: SpreadsheetApp.getActiveSpreadsheet().getName() });
   if (p.action === 'session') {
     var v = sheet_('Data_Penilaian', HEAD_DATA).getDataRange().getValues(), recs = [];
     for (var i = 1; i < v.length; i++) {
@@ -93,7 +96,7 @@ function doGet(e) {
 
 function doPost(e) {
   var lock = LockService.getScriptLock();
-  lock.waitLock(25000);
+  if (!lock.tryLock(25000)) return out_({ ok: false, error: 'Server sedang sibuk, coba lagi' });
   try {
     var b = JSON.parse(e.postData.contents);
     if (!benar_(b.key)) return out_({ ok: false, error: 'Kunci salah atau belum diatur di Script properties' });
@@ -158,11 +161,7 @@ function rekap_() {
     kader[kk] = [fv[i][5], fv[i][6], fv[i][7]];
   }
   var head = ['kader', 'desa', 'posyandu'].concat(POINT_IDS, ['point_lulus', 'point_dinilai']);
-  var ss = SpreadsheetApp.getActiveSpreadsheet(), sh = ss.getSheetByName('Rekap_Kader') || ss.insertSheet('Rekap_Kader');
-  sh.clear();
-  sh.appendRow(head);
-  sh.setFrozenRows(1);
-  sh.getRange(1, 1, 1, head.length).setFontWeight('bold').setBackground('#0b6b66').setFontColor('#ffffff');
+  var rows = [head];
   Object.keys(kader).forEach(function (kk) {
     var row = kader[kk].slice(), lulus = 0, dinilai = 0;
     POINT_IDS.forEach(function (pid) {
@@ -173,6 +172,12 @@ function rekap_() {
       row.push(L.persen + '% ' + L.status);
     });
     row.push(lulus, dinilai);
-    sh.appendRow(row);
+    rows.push(row);
   });
+  // ditulis sekaligus (bukan baris per baris) agar tetap cepat saat kader sudah banyak
+  var ss = SpreadsheetApp.getActiveSpreadsheet(), sh = ss.getSheetByName('Rekap_Kader') || ss.insertSheet('Rekap_Kader');
+  sh.clear();
+  sh.getRange(1, 1, rows.length, head.length).setValues(rows);
+  sh.setFrozenRows(1);
+  sh.getRange(1, 1, 1, head.length).setFontWeight('bold').setBackground('#0b6b66').setFontColor('#ffffff');
 }

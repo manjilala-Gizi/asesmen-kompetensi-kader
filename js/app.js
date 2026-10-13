@@ -53,7 +53,7 @@ async function tampilkan() {
       case 'hasil': hasil = await V.hasil(param); break;
       case 'riwayat': hasil = await V.riwayat(); break;
       case 'rekap': hasil = await V.rekap(paramMentah); break;
-      case 'setelan': hasil = await V.setelan(); break;
+      case 'setelan': hasil = await V.setelan(query); break;
       case 'tentang': hasil = await V.tentang(); break;
       default: hasil = { el: h('div', { class: 'kosong-state' }, h('b', null, 'Halaman tidak ditemukan'), h('a', { class: 'btn', href: '#/' }, 'Ke beranda')), judul: 'Tidak ditemukan' };
     }

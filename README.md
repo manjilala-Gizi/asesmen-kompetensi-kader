@@ -2,6 +2,9 @@
 
 Aplikasi web (PWA) untuk menilai kompetensi kader posyandu dengan daftar tilik KD I sampai KD V. Dikembangkan untuk **Poltekkes Kemenkes Makassar**.
 
+**Alamat aplikasi:** https://manjilala-gizi.github.io/asesmen-kompetensi-kader/
+(akun GitHub `manjilala-Gizi`, email manjilala@poltekkes-mks.ac.id)
+
 - 2 penilai mengisi di perangkat masing-masing, nilai digabung menjadi satu **nilai final**
 - 5 kelompok kompetensi, 25 point, 209 butir
 - Cetak **PDF** per point dan rekap per kader
@@ -19,7 +22,7 @@ Aplikasi web (PWA) untuk menilai kompetensi kader posyandu dengan daftar tilik K
 | Percobaan ulang | Setiap percobaan tersimpan di riwayat |
 | KD II Point 3 | 72 butir dalam 6 bagian, ditambah kategori kepatuhan (Kurang, Cukup, Baik, Sangat Baik) dari rata-rata skor kedua penilai |
 
-Perubahan teks butir dibanding dokumen asli (ejaan, penomoran) ada di [`PERUBAHAN-TEKS.md`](PERUBAHAN-TEKS.md).
+Perubahan teks butir dibanding dokumen asli (ejaan, penomoran) ada di [`docs/CATATAN-PERUBAHAN-TEKS.md`](docs/CATATAN-PERUBAHAN-TEKS.md).
 
 ## Memasang di GitHub Pages
 
@@ -30,11 +33,17 @@ Perubahan teks butir dibanding dokumen asli (ejaan, penomoran) ada di [`PERUBAHA
 
 Berkas `.nojekyll` sudah ada, dan semua alamat berkas bersifat relatif sehingga aplikasi berjalan di subfolder GitHub Pages.
 
-**Memperbarui aplikasi:** setelah mengubah berkas, naikkan `VERSI` di `sw.js` (misalnya `v1.0.1` menjadi `v1.0.2`) supaya perangkat mengambil versi baru.
+**Memperbarui aplikasi:** setelah mengubah berkas, naikkan `VERSI` di `sw.js` (misalnya `v1.1.0` menjadi `v1.1.1`) supaya perangkat mengambil versi baru.
 
 ## Menghubungkan Google Sheets
 
-Lihat [`docs/PANDUAN-GOOGLE-SHEETS.md`](docs/PANDUAN-GOOGLE-SHEETS.md). Kode penerima data ada di [`apps-script/Code.gs`](apps-script/Code.gs).
+Ringkasnya (langkah lengkap di [`docs/PANDUAN-GOOGLE-SHEETS.md`](docs/PANDUAN-GOOGLE-SHEETS.md)):
+
+1. Buat Google Spreadsheet baru, **Ekstensi > Apps Script**, tempel isi [`apps-script/Code.gs`](apps-script/Code.gs).
+2. **Setelan Proyek > Properti skrip**: tambahkan `KUNCI` berisi kata sandi bebas.
+3. **Terapkan > Deployment baru > Aplikasi web** (Jalankan sebagai: Saya, Akses: Siapa saja), salin URL `/exec`.
+4. Di aplikasi: **Setelan**, isi URL dan kunci, Simpan, Uji koneksi.
+5. **Bagikan tautan setelan ke penilai lain**, penilai cukup membuka tautan dan menekan Simpan.
 
 ## Alur pemakaian
 
@@ -59,7 +68,7 @@ js/pdf.js               pembuat PDF
 js/data/tilik.js        isi 25 daftar tilik (209 butir)
 vendor/                 pdf-lib dan font (disertakan agar bisa offline)
 apps-script/Code.gs     penerima data Google Sheets
-docs/                   panduan
+docs/                   panduan Google Sheets dan catatan perubahan teks butir
 ```
 
 Tidak ada proses build. Untuk mencoba di komputer: jalankan server statis di folder ini, misalnya `python3 -m http.server 8000`, lalu buka `http://localhost:8000`. Service worker dan PWA membutuhkan `http://localhost` atau HTTPS, tidak bisa dari `file://`.
